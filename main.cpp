@@ -1,10 +1,9 @@
-#include <iostream>
+#include "defines.h"
+#include "logging.h"
 #include <vulkan/vulkan.h>
 
 int main() {
   VkInstance vkInstance;
 
-#ifdef DEBUG
-  fprintf(stdout, "Hello, Pokemoon.\n");
-#endif
+  LOG_DEBUG("Hello, Pokemoon.");
 }

@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 find_package(Vulkan REQUIRED FATAL_ERROR)
 
-add_executable(main main.cpp)
+add_executable(main main.cpp logging.cpp)
 
 target_link_libraries(main PRIVATE Vulkan::Vulkan)
 
