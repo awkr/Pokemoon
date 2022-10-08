@@ -4,9 +4,9 @@
 
 #include "logging.h"
 #include "defines.h"
+#include "platform.h"
 #include <cstdarg>
 #include <cstdio>
-#include <cstring>
 
 void logging_initialize() {}
 
@@ -18,7 +18,7 @@ void log_output(LogLevel level, const char *message, ...) {
   const u64 size = 32 * KiB;
 
   char buffer[size];
-  memset(buffer, 0, sizeof(buffer));
+  platform_zero_memory(buffer, sizeof(buffer));
 
   va_list args;
   va_start(args, message);
@@ -26,11 +26,15 @@ void log_output(LogLevel level, const char *message, ...) {
   va_end(args);
 
   char out[size];
-  memset(out, 0, sizeof(out));
+  platform_zero_memory(out, sizeof(out));
 
   sprintf(out, "%s %s\n", prefixes[(u8) level], buffer);
 
-  printf("%s", out);
+  if (level >= LogLevel::Warn) {
+    platform_console_write_error(out);
+  } else {
+    platform_console_write(out);
+  }
 }
 
 void report_assertion_failure(const char *expression, const char *file, u32 line) {

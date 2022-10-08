@@ -43,4 +43,16 @@ void report_assertion_failure(const char *expression,
     __builtin_trap();                                                                              \
   }
 
+#if defined(__APPLE__)
+#define PLATFORM_APPLE 1
+#include <TargetConditionals.h>
+#if TARGET_OS_IPHONE
+#define PLATFORM_IOS 1
+#elif TARGET_IPHONE_SIMULATOR
+#define PLATFORM_IOS_SIMULATOR 1
+#endif
+#else
+#error "Unknown platform"
+#endif
+
 #endif // POKEMOON_DEFINES_H
