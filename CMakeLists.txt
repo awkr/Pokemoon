@@ -8,7 +8,7 @@ find_package(Vulkan REQUIRED)
 
 add_subdirectory(third-party/glfw)
 
-add_executable(main main.cpp logging.cpp platform.cpp)
+add_executable(main main.cpp logging.cpp platform.cpp application.cpp)
 
 target_link_libraries(main PRIVATE Vulkan::Vulkan glfw)
 

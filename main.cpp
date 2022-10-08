@@ -1,17 +1,14 @@
-#include "defines.h"
-#include "logging.h"
-#include "platform.h"
+#include "application.h"
 #include <vulkan/vulkan.h>
 
 int main() {
   VkInstance vkInstance;
 
-  LOG_DEBUG("Hello, Pokemoon.");
-
-  PlatformState platformState{};
-  platform_startup(&platformState, "Pokemoon", 240, 240);
-  while (true) {
-    platform_poll_events(&platformState);
-  }
-  platform_shutdown(&platformState);
+  ApplicationConfig config = {
+      .name   = "Pokemoon",
+      .width  = 240,
+      .height = 240,
+  };
+  application_create(config);
+  application_run();
 }
