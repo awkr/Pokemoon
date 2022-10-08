@@ -32,3 +32,20 @@ void log_output(LogLevel level, const char *message, ...) {
 
   printf("%s", out);
 }
+
+void report_assertion_failure(const char *expression, const char *file, u32 line) {
+  log_output(
+      LogLevel::Fatal, "Assertion failure: %s, in file: %s, line: %d", expression, file, line);
+}
+
+void report_assertion_failure(const char *expression,
+                              const char *message,
+                              const char *file,
+                              u32         line) {
+  log_output(LogLevel::Fatal,
+             "Assertion failure: %s, message: '%s', in file: %s, line: %d",
+             expression,
+             message,
+             file,
+             line);
+}

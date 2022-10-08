@@ -22,4 +22,25 @@ const u64 KiB = 1024;
 const u64 MiB = KiB * 1024;
 const u64 GiB = MiB * 1024;
 
+void report_assertion_failure(const char *expression, const char *file, u32 line);
+
+void report_assertion_failure(const char *expression,
+                              const char *message,
+                              const char *file,
+                              u32         line);
+
+#define ASSERT(expr)                                                                               \
+  if (expr) {                                                                                      \
+  } else {                                                                                         \
+    report_assertion_failure(#expr, __FILE_NAME__, __LINE__);                                      \
+    __builtin_trap();                                                                              \
+  }
+
+#define ASSERT_MESSAGE(expr, message)                                                              \
+  if (expr) {                                                                                      \
+  } else {                                                                                         \
+    report_assertion_failure(#expr, message, __FILE_NAME__, __LINE__);                             \
+    __builtin_trap();                                                                              \
+  }
+
 #endif // POKEMOON_DEFINES_H
