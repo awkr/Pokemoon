@@ -3,6 +3,7 @@
 //
 
 #include "application.h"
+#include "event.h"
 #include "logging.h"
 #include "memory.h"
 #include "platform.h"
@@ -28,7 +29,7 @@ void application_create(const ApplicationConfig &config) {
 
   // Initialize subsystems
   logging_initialize();
-
+  event_initialize();
   platform_startup(&applicationState.platformState, config.name, config.width, config.height);
 
   ASSERT(initialize());
@@ -60,7 +61,7 @@ void application_run() {
   applicationState.isRunning = false;
 
   platform_shutdown(&applicationState.platformState);
-
+  event_shutdown();
   logging_shutdown();
 
   LOG_INFO(memory_get_usage());
