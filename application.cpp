@@ -4,6 +4,7 @@
 
 #include "application.h"
 #include "logging.h"
+#include "memory.h"
 #include "platform.h"
 
 struct ApplicationState {
@@ -40,6 +41,8 @@ void application_create(const ApplicationConfig &config) {
 }
 
 void application_run() {
+  LOG_INFO(memory_get_usage());
+
   while (applicationState.isRunning) {
     platform_poll_events(&applicationState.platformState);
     if (!applicationState.isSuspended) {
@@ -59,6 +62,8 @@ void application_run() {
   platform_shutdown(&applicationState.platformState);
 
   logging_shutdown();
+
+  LOG_INFO(memory_get_usage());
 }
 
 bool initialize() { return true; }

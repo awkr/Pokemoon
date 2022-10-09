@@ -4,6 +4,7 @@
 
 #include "platform.h"
 #include "logging.h"
+#include "memory.h"
 #include <GLFW/glfw3.h>
 #include <chrono>
 #include <cstdio>
@@ -38,7 +39,7 @@ static void glfw_scroll_callback(GLFWwindow *window, f64 xOffset, f64 yOffset) {
 static void glfw_refresh_callback(GLFWwindow *window) {}
 
 void platform_startup(PlatformState *state, const char *name, u32 width, u32 height) {
-  state->internalState = platform_allocate(sizeof(PlatformInternalState));
+  state->internalState = memory_allocate(sizeof(PlatformInternalState), MemoryTag::Platform);
   auto internalState   = (PlatformInternalState *) state->internalState;
 
   glfwSetErrorCallback(glfw_error_callback);
@@ -61,6 +62,7 @@ void platform_shutdown(PlatformState *state) {
   auto internalState = (PlatformInternalState *) state->internalState;
   glfwDestroyWindow(internalState->window);
   glfwTerminate();
+  memory_free(internalState, sizeof(PlatformInternalState), MemoryTag::Platform);
 }
 
 void platform_poll_events(PlatformState *state) { glfwPollEvents(); }

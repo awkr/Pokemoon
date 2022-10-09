@@ -1,7 +1,10 @@
 #include "application.h"
+#include "memory.h"
 #include <vulkan/vulkan.h>
 
 int main() {
+  memory_initialize();
+
   VkInstance vkInstance;
 
   ApplicationConfig config = {
@@ -11,4 +14,6 @@ int main() {
   };
   application_create(config);
   application_run();
+
+  memory_shutdown();
 }
