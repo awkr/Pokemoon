@@ -4,6 +4,7 @@
 
 #include "application.h"
 #include "event.h"
+#include "input.h"
 #include "logging.h"
 #include "memory.h"
 #include "platform.h"
@@ -30,6 +31,7 @@ void application_create(const ApplicationConfig &config) {
   // Initialize subsystems
   logging_initialize();
   event_initialize();
+  input_initialize();
   platform_startup(&applicationState.platformState, config.name, config.width, config.height);
 
   ASSERT(initialize());
@@ -55,12 +57,15 @@ void application_run() {
         applicationState.isRunning = false;
         break;
       }
+      // Input update/state copying should always be handled after any input should be recorded
+      input_update();
     }
   }
 
   applicationState.isRunning = false;
 
   platform_shutdown(&applicationState.platformState);
+  input_shutdown();
   event_shutdown();
   logging_shutdown();
 

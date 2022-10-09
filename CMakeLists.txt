@@ -8,7 +8,17 @@ find_package(Vulkan REQUIRED)
 
 add_subdirectory(third-party/glfw)
 
-add_executable(main main.cpp logging.cpp platform.cpp application.cpp memory.cpp event.cpp container/darray.cpp)
+set(SOURCES
+    main.cpp
+    logging.cpp
+    platform.cpp
+    application.cpp
+    memory.cpp
+    event.cpp
+    container/darray.cpp
+    input.cpp)
+
+add_executable(main ${SOURCES})
 
 target_include_directories(main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
