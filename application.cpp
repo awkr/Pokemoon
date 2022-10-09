@@ -25,12 +25,22 @@ bool update();
 bool render();
 void resize();
 
+// Event handles
+bool application_on_event(EventCode           code,
+                          void               *sender,
+                          void               *listener,
+                          const EventContext &context);
+bool application_on_key(EventCode code, void *sender, void *listener, const EventContext &context);
+
 void application_create(const ApplicationConfig &config) {
   ASSERT(!initialized);
 
   // Initialize subsystems
   logging_initialize();
   event_initialize();
+  event_register(EventCode::ApplicationQuit, nullptr, application_on_event);
+  event_register(EventCode::KeyReleased, nullptr, application_on_key);
+  event_register(EventCode::KeyPressed, nullptr, application_on_key);
   input_initialize();
   platform_startup(&applicationState.platformState, config.name, config.width, config.height);
 
@@ -66,6 +76,9 @@ void application_run() {
 
   platform_shutdown(&applicationState.platformState);
   input_shutdown();
+  event_deregister(EventCode::KeyPressed, nullptr, application_on_key);
+  event_deregister(EventCode::KeyReleased, nullptr, application_on_key);
+  event_deregister(EventCode::ApplicationQuit, nullptr, application_on_event);
   event_shutdown();
   logging_shutdown();
 
@@ -79,3 +92,35 @@ bool update() { return true; }
 bool render() { return true; }
 
 void resize() {}
+
+bool application_on_event(EventCode           code,
+                          void               *sender,
+                          void               *listener,
+                          const EventContext &context) {
+  switch (code) {
+  case EventCode::ApplicationQuit:
+    applicationState.isRunning = false;
+    return true;
+  default:
+    break;
+  }
+  return false;
+}
+
+bool application_on_key(EventCode code, void *sender, void *listener, const EventContext &context) {
+  if (code == EventCode::KeyPressed) {
+    auto key = context.u16[0];
+    LOG_DEBUG("Key %d pressed", key);
+  } else if ((EventCode) code == EventCode::KeyReleased) {
+    auto key = (Key) context.u16[0];
+    if (key == Key::ESC) {
+      event_fire(EventCode::ApplicationQuit, nullptr, {});
+      return true;
+    } else if (key == Key::M) {
+      LOG_INFO(memory_get_usage());
+      return true;
+    }
+    LOG_DEBUG("Key %d released", key);
+  }
+  return false;
+}

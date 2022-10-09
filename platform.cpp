@@ -3,6 +3,8 @@
 //
 
 #include "platform.h"
+#include "event.h"
+#include "input.h"
 #include "logging.h"
 #include "memory.h"
 #include <GLFW/glfw3.h>
@@ -20,21 +22,29 @@ static void glfw_error_callback(int error, const char *description) {
   LOG_ERROR("GLFW error: %s", description);
 }
 
-static void glfw_close_callback(GLFWwindow *window) {}
+static void glfw_close_callback(GLFWwindow *window) {
+  event_fire(EventCode::ApplicationQuit, nullptr, {});
+}
 
 static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
-  if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
-    glfwSetWindowShouldClose(window, GLFW_TRUE);
-  }
+  bool pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+  input_process_key((Key) key, pressed);
 }
 
 static void glfw_framebuffer_size_callback(GLFWwindow *window, int width, int height) {}
 
-static void glfw_mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {}
+static void glfw_mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
+  bool pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+  input_process_mouse_button((MouseButton) button, pressed);
+}
 
-static void glfw_cursor_position_callback(GLFWwindow *window, f64 xPos, f64 yPos) {}
+static void glfw_cursor_position_callback(GLFWwindow *window, f64 xPos, f64 yPos) {
+  input_process_mouse_move((f32) xPos, (f32) yPos);
+}
 
-static void glfw_scroll_callback(GLFWwindow *window, f64 xOffset, f64 yOffset) {}
+static void glfw_scroll_callback(GLFWwindow *window, f64 xOffset, f64 yOffset) {
+  input_process_mouse_wheel((f32) xOffset, (f32) yOffset);
+}
 
 static void glfw_refresh_callback(GLFWwindow *window) {}
 
