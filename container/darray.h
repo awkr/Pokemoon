@@ -49,9 +49,16 @@ void darray_length_set(void *array, u64 n);
 
 #define DARRAY_RESERVE(type, capacity) darray_create(capacity, sizeof(type))
 
-#define DARRAY_PUSH(array, value) array = (typeof(value) *) darray_push(array, &value);
+#define DARRAY_PUSH(array, value)                                                                  \
+  {                                                                                                \
+    typeof(value) e = value;                                                                       \
+    array           = (typeof(array)) darray_push(array, &e);                                      \
+  }
 
 #define DARRAY_INSERT_AT(array, index, value)                                                      \
-  array = (typeof(value)) darray_insert_at(array, index, &value);
+  {                                                                                                \
+    typeof(value) e = value;                                                                       \
+    array           = (typeof(array)) darray_insert_at(array, index, &e);                          \
+  }
 
 #endif // POKEMOON_DARRAY_H

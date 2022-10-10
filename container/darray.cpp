@@ -46,9 +46,9 @@ void *darray_push(void *array, const void *src) {
   u64 length = darray_length(array);
   u64 stride = darray_stride(array);
   if (length >= darray_capacity(array)) { array = darray_resize(array); }
-  auto dst = (u64 *) array;
+  auto dst = (u64) array;
   dst += (length * stride);
-  memory_copy(dst, src, stride);
+  memory_copy((void *) dst, src, stride);
   darray_length_set(array, length + 1);
   return array;
 }
@@ -88,12 +88,14 @@ void *darray_pop_at(void *array, u64 index, void *dst) {
     return array;
   }
 
-  auto src = (u64 *) array;
-  if (dst) { memory_copy(dst, src + index * stride, stride); }
+  auto src = (u64) array;
+  if (dst) { memory_copy(dst, (void *) (src + index * stride), stride); }
 
   if (index != length - 1) {
     // If not on the last element, snip out the entry and copy the reset inward
-    memory_copy(src + index * stride, src + (index - 1) * stride, stride * (length - index));
+    memory_copy((void *) (src + index * stride),
+                (void *) (src + (index - 1) * stride),
+                stride * (length - index));
   }
   darray_length_set(array, length - 1);
   return array;
