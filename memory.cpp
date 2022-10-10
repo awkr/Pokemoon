@@ -13,7 +13,7 @@ struct MemoryStats {
   u64 taggedAllocations[(u16) MemoryTag::Max];
 };
 
-static const char *memoryTags[(u16) MemoryTag::Max] = {
+static CString memoryTags[(u16) MemoryTag::Max] = {
     "Unknown",
     "Array",
     "DArray",

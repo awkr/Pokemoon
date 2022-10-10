@@ -8,9 +8,9 @@
 #include "defines.h"
 
 struct ApplicationConfig {
-  const char *name;
-  u16         width;
-  u16         height;
+  CString name;
+  u16     width;
+  u16     height;
 };
 
 void application_create(const ApplicationConfig &config);

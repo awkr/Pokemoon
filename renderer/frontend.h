@@ -11,7 +11,7 @@ struct RenderPacket {
   f32 deltaTime;
 };
 
-bool renderer_initialize(struct PlatformState *platformState, const char *applicationName);
+bool renderer_initialize(struct PlatformState *platformState, CString applicationName);
 void renderer_shutdown();
 
 bool renderer_draw_frame(const RenderPacket &packet);

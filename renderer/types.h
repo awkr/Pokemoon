@@ -12,6 +12,9 @@
 struct Context {
   VkInstance             instance;
   VkAllocationCallbacks *allocator;
+#ifdef DEBUG
+  VkDebugUtilsMessengerEXT debugMessenger;
+#endif
 };
 
 #endif // POKEMOON_TYPES_H

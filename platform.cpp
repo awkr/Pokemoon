@@ -3,6 +3,7 @@
 //
 
 #include "platform.h"
+#include "container/darray.h"
 #include "event.h"
 #include "input.h"
 #include "logging.h"
@@ -13,6 +14,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <thread>
+#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_metal.h>
 
 struct PlatformInternalState {
   GLFWwindow *window;
@@ -48,7 +51,7 @@ static void glfw_scroll_callback(GLFWwindow *window, f64 xOffset, f64 yOffset) {
 
 static void glfw_refresh_callback(GLFWwindow *window) {}
 
-void platform_startup(PlatformState *state, const char *name, u32 width, u32 height) {
+void platform_startup(PlatformState *state, CString name, u32 width, u32 height) {
   state->internalState = memory_allocate(sizeof(PlatformInternalState), MemoryTag::Platform);
   auto internalState   = (PlatformInternalState *) state->internalState;
 
@@ -87,10 +90,14 @@ void *platform_copy_memory(void *dst, const void *src, u64 size) { return memcpy
 
 void *platform_set_memory(void *dst, i32 value, u64 size) { return memset(dst, value, size); }
 
-void platform_console_write(const char *message) { fprintf(stdout, "%s", message); }
+void platform_console_write(CString message) { fprintf(stdout, "%s", message); }
 
-void platform_console_write_error(const char *message) { fprintf(stderr, "%s", message); }
+void platform_console_write_error(CString message) { fprintf(stderr, "%s", message); }
 
 f64 platform_get_absolute_time() { return glfwGetTime(); }
 
 void platform_sleep(u64 ms) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); }
+
+void platform_get_required_extension(CString *&extensions) {
+  DARRAY_PUSH(extensions, &VK_EXT_METAL_SURFACE_EXTENSION_NAME);
+}

@@ -22,4 +22,6 @@ struct RendererBackend {
 void renderer_backend_setup(RendererBackend *outBackend);
 void renderer_backend_cleanup(RendererBackend *backend);
 
+void platform_get_required_extension(CString *&extensions);
+
 #endif // POKEMOON_BACKEND_H

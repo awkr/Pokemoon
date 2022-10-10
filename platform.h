@@ -11,7 +11,7 @@ struct PlatformState {
   void *internalState;
 };
 
-void platform_startup(PlatformState *state, const char *name, u32 width, u32 height);
+void platform_startup(PlatformState *state, CString name, u32 width, u32 height);
 
 void platform_shutdown(PlatformState *state);
 
@@ -27,9 +27,9 @@ void *platform_copy_memory(void *dst, const void *src, u64 size);
 
 void *platform_set_memory(void *dst, i32 value, u64 size);
 
-void platform_console_write(const char *message);
+void platform_console_write(CString message);
 
-void platform_console_write_error(const char *message);
+void platform_console_write_error(CString message);
 
 f64 platform_get_absolute_time();
 

@@ -3,15 +3,15 @@
 //
 
 #include "frontend.h"
-#include "memory.h"
 #include "backend.h"
+#include "memory.h"
 
 static RendererBackend *backend = nullptr;
 
 bool begin_frame(f32 deltaTime);
 bool end_frame(f32 deltaTime);
 
-bool renderer_initialize(struct PlatformState *platformState, const char *applicationName) {
+bool renderer_initialize(struct PlatformState *platformState, CString applicationName) {
   backend = (RendererBackend *) memory_allocate(sizeof(RendererBackend), MemoryTag::Renderer);
   renderer_backend_setup(backend);
   return backend->initialize(backend, platformState, applicationName);
