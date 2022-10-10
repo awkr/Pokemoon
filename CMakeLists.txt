@@ -16,7 +16,10 @@ set(SOURCES
     memory.cpp
     event.cpp
     container/darray.cpp
-    input.cpp)
+    input.cpp
+    core/clock.cpp
+    renderer/frontend.cpp
+    renderer/backend.cpp)
 
 add_executable(main ${SOURCES})
 

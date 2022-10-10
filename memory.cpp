@@ -21,6 +21,7 @@ static const char *memoryTags[(u16) MemoryTag::Max] = {
     "Texture",
     "Event",
     "Platform",
+    "Renderer",
 };
 
 static MemoryStats memoryStats{};

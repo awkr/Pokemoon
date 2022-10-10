@@ -15,6 +15,7 @@ enum class MemoryTag {
   Texture,
   Event,
   Platform,
+  Renderer,
   Max,
 };
 
