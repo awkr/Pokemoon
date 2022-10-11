@@ -19,7 +19,8 @@ set(SOURCES
     input.cpp
     core/clock.cpp
     renderer/frontend.cpp
-    renderer/backend.cpp)
+    renderer/backend.cpp
+    renderer/device.cpp)
 
 add_executable(main ${SOURCES})
 

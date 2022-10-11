@@ -8,6 +8,7 @@
 #include "input.h"
 #include "logging.h"
 #include "memory.h"
+#include "renderer/types.h"
 #include <GLFW/glfw3.h>
 #include <chrono>
 #include <cstdio>
@@ -100,4 +101,11 @@ void platform_sleep(u64 ms) { std::this_thread::sleep_for(std::chrono::milliseco
 
 void platform_get_required_extension(CString *&extensions) {
   DARRAY_PUSH(extensions, &VK_EXT_METAL_SURFACE_EXTENSION_NAME);
+}
+
+void platform_create_surface(PlatformState *state, Context *context) {
+  auto internalState = (PlatformInternalState *) state->internalState;
+  auto error         = glfwCreateWindowSurface(
+      context->instance, internalState->window, context->allocator, &context->surface);
+  VK_CHECK(error);
 }

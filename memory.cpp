@@ -46,6 +46,10 @@ void memory_free(void *block, u64 size, MemoryTag tag) {
   platform_free(block);
 }
 
+void memory_free(void *block, u64 stride, u64 n, MemoryTag tag) {
+  memory_free(block, stride * n, tag);
+}
+
 void *memory_zero(void *block, u64 size) { return platform_zero_memory(block, size); }
 
 void *memory_copy(void *dst, const void *src, u64 size) {

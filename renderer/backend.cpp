@@ -7,6 +7,7 @@
 #include "logging.h"
 #include "memory.h"
 #include "platform.h"
+#include "renderer/device.h"
 #include "types.h"
 
 // ------- Vulkan implementations -------
@@ -107,10 +108,16 @@ bool initialize(RendererBackend *backend,
       context.instance, &debugMessengerCreateInfo, context.allocator, &context.debugMessenger));
 #endif
 
+  platform_create_surface(platformState, &context);
+
+  device_create(&context);
+
   return true;
 }
 
 bool shutdown(RendererBackend *backend) {
+  device_destroy(&context);
+  vkDestroySurfaceKHR(context.instance, context.surface, context.allocator);
 #ifdef DEBUG
   auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(
       context.instance, "vkDestroyDebugUtilsMessengerEXT");
