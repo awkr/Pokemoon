@@ -12,13 +12,15 @@ void *darray_create(u64 capacity, u64 stride, MemoryTag tag) {
   array[DArrayField::Capacity] = capacity;
   array[DArrayField::Length]   = 0;
   array[DArrayField::Stride]   = stride;
+  array[DArrayField::Tag]      = (u64) tag;
   return array + DArrayField::Max;
 }
 
-void darray_destroy(void *array, MemoryTag tag) {
+void darray_destroy(void *array) {
   auto header     = (u64 *) array - DArrayField::Max;
   u64  headerSize = DArrayField::Max * sizeof(u64);
   u64  totalSize  = headerSize + header[DArrayField::Capacity] * header[DArrayField::Stride];
+  auto tag        = (MemoryTag) header[DArrayField::Tag];
   memory_free(header, totalSize, tag);
 }
 

@@ -29,6 +29,11 @@ struct Device {
   u32                              computeQueueFamily;
   u32                              transferQueueFamily;
   SwapchainSupport                 swapchainSupport;
+
+  VkQueue graphicsQueue;
+  VkQueue presentQueue;
+  VkQueue transferQueue;
+  VkQueue computeQueue;
 };
 
 struct Context {

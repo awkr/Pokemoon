@@ -27,7 +27,7 @@ void event_initialize() {}
 void event_shutdown() {
   for (auto &entry : eventSystemState.registered) {
     if (entry.events != nullptr) {
-      darray_destroy(entry.events, MemoryTag::Event);
+      darray_destroy(entry.events);
       entry.events = nullptr;
     }
   }

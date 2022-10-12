@@ -11,6 +11,7 @@
 // u64   capacity = number of elements that can be held
 // u64   length   = number of elements currently contained
 // u64   stride   = size of each element in bytes
+// u64   tag      = tag used for memory tracking
 // void *elements
 
 #define DARRAY_DEFAULT_CAPACITY 1
@@ -18,10 +19,10 @@
 
 #include "memory.h"
 
-enum DArrayField { Capacity = 0, Length, Stride, Max };
+enum DArrayField { Capacity = 0, Length, Stride, Tag, Max };
 
 void *darray_create(u64 capacity, u64 stride, MemoryTag tag = MemoryTag::DArray);
-void  darray_destroy(void *array, MemoryTag tag = MemoryTag::DArray);
+void  darray_destroy(void *array);
 
 u64  darray_field_get(void *array, DArrayField field);
 void darray_field_set(void *array, DArrayField field, u64 value);
