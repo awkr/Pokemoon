@@ -1,5 +1,22 @@
 #!/usr/bin/env bash
 
-cmake --build build --config Debug --target main --
+set -e
 
-./build/main
+function build() {
+    cmake --build build --config Debug --target main --
+}
+
+function run() {
+    ./build/main
+}
+
+TARGET=$1
+case $TARGET in
+build)
+    build
+    ;;
+*)
+    build
+    run
+    ;;
+esac
