@@ -54,4 +54,6 @@ void report_assertion_failure(CString expression, CString message, CString file,
 #error "Unknown platform"
 #endif
 
+#define CLAMP(value, min, max) (value <= min) ? value : ((value <= max) ? value : max)
+
 #endif // POKEMOON_DEFINES_H

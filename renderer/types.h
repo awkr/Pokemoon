@@ -34,6 +34,26 @@ struct Device {
   VkQueue presentQueue;
   VkQueue transferQueue;
   VkQueue computeQueue;
+
+  VkFormat depthFormat;
+};
+
+struct Image {
+  VkImage        handle;
+  VkDeviceMemory memory;
+  VkImageView    view;
+  u32            width;
+  u32            height;
+};
+
+struct Swapchain {
+  VkSurfaceFormatKHR imageFormat;
+  u8                 maxFramesInFlight;
+  VkSwapchainKHR     handle;
+  u32                imageCount;
+  VkImage           *images;
+  VkImageView       *views;
+  Image              depthAttachment;
 };
 
 struct Context {
@@ -44,6 +64,18 @@ struct Context {
 #endif
   VkSurfaceKHR surface;
   Device       device;
+
+  u32 framebufferWidth;
+  u32 framebufferHeight;
+
+  Swapchain swapchain;
+  u32       imageIndex;
+  u64       currentFrame;
+  bool      recreatingSwapchain;
+
+  bool (*query_memory_type_index)(u32                   requiredType,
+                                  VkMemoryPropertyFlags requiredProperty,
+                                  u32                  &index);
 };
 
 #endif // POKEMOON_TYPES_H

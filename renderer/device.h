@@ -14,4 +14,6 @@ void device_query_swapchain_support(VkPhysicalDevice  physicalDevice,
                                     VkSurfaceKHR      surface,
                                     SwapchainSupport &out);
 
+bool device_detect_depth_format(Device *device);
+
 #endif // POKEMOON_DEVICE_H

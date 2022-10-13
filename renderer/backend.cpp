@@ -2,13 +2,14 @@
 // Created by Hongjian Zhu on 2022/10/10.
 //
 
-#include "backend.h"
+#include "renderer/backend.h"
 #include "container/darray.h"
 #include "logging.h"
 #include "memory.h"
 #include "platform.h"
 #include "renderer/device.h"
-#include "types.h"
+#include "renderer/swapchain.h"
+#include "renderer/types.h"
 
 // ------- Vulkan implementations -------
 
@@ -21,11 +22,13 @@ bool shutdown(RendererBackend *backend);
 bool begin_frame(RendererBackend *backend, f32 deltaTime);
 bool end_frame(RendererBackend *backend, f32 deltaTime);
 void resize(RendererBackend *backend, u16 width, u16 height);
+bool query_memory_type_index(u32 requiredType, VkMemoryPropertyFlags requiredProperty, u32 &index);
 
-VkBool32 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
-                        VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
-                        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-                        void                                       *pUserData);
+static VKAPI_ATTR VkBool32 VKAPI_CALL
+debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
+               VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
+               const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+               void                                       *pUserData);
 
 // ------- Public APIs -------
 
@@ -46,6 +49,8 @@ void renderer_backend_cleanup(RendererBackend *backend) {
 bool initialize(RendererBackend *backend,
                 PlatformState   *platformState,
                 const char      *applicationName) {
+  context.query_memory_type_index = query_memory_type_index;
+
   VkApplicationInfo applicationInfo  = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
   applicationInfo.apiVersion         = VK_API_VERSION_1_3;
   applicationInfo.pApplicationName   = applicationName;
@@ -62,7 +67,7 @@ bool initialize(RendererBackend *backend,
 
   LOG_DEBUG("Required instance extensions:");
   for (u32 i = 0; i < darray_length(requiredExtensions); ++i) {
-    LOG_DEBUG(requiredExtensions[i]);
+    LOG_DEBUG("  %s", requiredExtensions[i]);
   }
 #endif
 
@@ -112,10 +117,14 @@ bool initialize(RendererBackend *backend,
 
   device_create(&context);
 
+  swapchain_create(
+      &context, context.framebufferWidth, context.framebufferHeight, &context.swapchain);
+
   return true;
 }
 
 bool shutdown(RendererBackend *backend) {
+  swapchain_destroy(&context, &context.swapchain);
   device_destroy(&context);
   vkDestroySurfaceKHR(context.instance, context.surface, context.allocator);
 #ifdef DEBUG
@@ -133,10 +142,24 @@ bool end_frame(RendererBackend *backend, f32 deltaTime) { return true; }
 
 void resize(RendererBackend *backend, u16 width, u16 height) {}
 
-VkBool32 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
-                        VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
-                        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-                        void                                       *pUserData) {
+bool query_memory_type_index(u32 requiredType, VkMemoryPropertyFlags requiredProperty, u32 &index) {
+  VkPhysicalDeviceMemoryProperties memoryProperties;
+  vkGetPhysicalDeviceMemoryProperties(context.device.physicalDevice, &memoryProperties);
+  for (u32 i = 0; i < memoryProperties.memoryTypeCount; ++i) {
+    if ((requiredType & (1 << i)) &&
+        ((memoryProperties.memoryTypes[i].propertyFlags & requiredProperty) == requiredProperty)) {
+      index = i;
+      return true;
+    }
+  }
+  return false;
+}
+
+static VKAPI_ATTR VkBool32 VKAPI_CALL
+debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
+               VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
+               const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+               void                                       *pUserData) {
   switch (messageSeverity) {
   default:
   case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
