@@ -6,9 +6,12 @@
 #define POKEMOON_TYPES_H
 
 #include "defines.h"
+#include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
 
 #define VK_CHECK(expr) ASSERT(expr == VK_SUCCESS);
+
+using Vec4 = glm::vec4;
 
 struct SwapchainSupport {
   VkSurfaceCapabilitiesKHR capabilities;
@@ -46,6 +49,24 @@ struct Image {
   u32            height;
 };
 
+enum class RenderPassState {
+  NotAllocated,
+  Ready,
+  Recording,
+  InRenderPass,
+  RecordingEnded,
+  Submitted,
+};
+
+struct RenderPass {
+  VkRenderPass    handle;
+  VkRect2D        renderArea;
+  Vec4            clearColor;
+  f32             depth;
+  u32             stencil;
+  RenderPassState state;
+};
+
 struct Swapchain {
   VkSurfaceFormatKHR imageFormat;
   u8                 maxFramesInFlight;
@@ -54,6 +75,20 @@ struct Swapchain {
   VkImage           *images;
   VkImageView       *views;
   Image              depthAttachment;
+};
+
+enum class CommandBufferState {
+  NotAllocated,
+  Ready,
+  Recording,
+  InRenderPass,
+  RecordingEnded,
+  Submitted,
+};
+
+struct CommandBuffer {
+  VkCommandBuffer    handle;
+  CommandBufferState state;
 };
 
 struct Context {
@@ -72,6 +107,8 @@ struct Context {
   u32       imageIndex;
   u64       currentFrame;
   bool      recreatingSwapchain;
+
+  RenderPass mainRenderPass;
 
   bool (*query_memory_type_index)(u32                   requiredType,
                                   VkMemoryPropertyFlags requiredProperty,

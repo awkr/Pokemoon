@@ -8,6 +8,7 @@
 #include "memory.h"
 #include "platform.h"
 #include "renderer/device.h"
+#include "renderer/render_pass.h"
 #include "renderer/swapchain.h"
 #include "renderer/types.h"
 
@@ -120,10 +121,18 @@ bool initialize(RendererBackend *backend,
   swapchain_create(
       &context, context.framebufferWidth, context.framebufferHeight, &context.swapchain);
 
+  render_pass_create(&context,
+                     {{0, 0}, {context.framebufferWidth, context.framebufferHeight}},
+                     {0.5, 0.1, 0.2, 1},
+                     1,
+                     0,
+                     &context.mainRenderPass);
+
   return true;
 }
 
 bool shutdown(RendererBackend *backend) {
+  render_pass_destroy(&context, &context.mainRenderPass);
   swapchain_destroy(&context, &context.swapchain);
   device_destroy(&context);
   vkDestroySurfaceKHR(context.instance, context.surface, context.allocator);

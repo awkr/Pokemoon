@@ -23,7 +23,8 @@ set(SOURCES
     renderer/backend.cpp
     renderer/device.cpp
     renderer/swapchain.cpp
-    renderer/image.cpp)
+    renderer/image.cpp
+    renderer/render_pass.cpp)
 
 add_executable(main ${SOURCES})
 
