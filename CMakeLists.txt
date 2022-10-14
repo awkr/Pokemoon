@@ -24,7 +24,8 @@ set(SOURCES
     renderer/device.cpp
     renderer/swapchain.cpp
     renderer/image.cpp
-    renderer/render_pass.cpp)
+    renderer/render_pass.cpp
+    renderer/command_buffer.cpp)
 
 add_executable(main ${SOURCES})
 

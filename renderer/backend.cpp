@@ -7,6 +7,7 @@
 #include "logging.h"
 #include "memory.h"
 #include "platform.h"
+#include "renderer/command_buffer.h"
 #include "renderer/device.h"
 #include "renderer/render_pass.h"
 #include "renderer/swapchain.h"
@@ -24,6 +25,7 @@ bool begin_frame(RendererBackend *backend, f32 deltaTime);
 bool end_frame(RendererBackend *backend, f32 deltaTime);
 void resize(RendererBackend *backend, u16 width, u16 height);
 bool query_memory_type_index(u32 requiredType, VkMemoryPropertyFlags requiredProperty, u32 &index);
+void create_command_buffers(RendererBackend *backend);
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
@@ -128,10 +130,18 @@ bool initialize(RendererBackend *backend,
                      0,
                      &context.mainRenderPass);
 
+  create_command_buffers(backend);
+
   return true;
 }
 
 bool shutdown(RendererBackend *backend) {
+  for (u32 i = 0; i < context.swapchain.imageCount; ++i) {
+    command_buffer_free(
+        &context, context.device.graphicsCommandPool, &context.graphicsCommandBuffers[i]);
+  }
+  darray_destroy(context.graphicsCommandBuffers);
+
   render_pass_destroy(&context, &context.mainRenderPass);
   swapchain_destroy(&context, &context.swapchain);
   device_destroy(&context);
@@ -162,6 +172,15 @@ bool query_memory_type_index(u32 requiredType, VkMemoryPropertyFlags requiredPro
     }
   }
   return false;
+}
+
+void create_command_buffers(RendererBackend *backend) {
+  context.graphicsCommandBuffers =
+      DARRAY_RESERVE_TAG(CommandBuffer, context.swapchain.imageCount, MemoryTag::CmdBuffer);
+  for (u32 i = 0; i < context.swapchain.imageCount; ++i) {
+    command_buffer_allocate(
+        &context, context.device.graphicsCommandPool, true, &context.graphicsCommandBuffers[i]);
+  }
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL

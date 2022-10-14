@@ -38,6 +38,8 @@ struct Device {
   VkQueue transferQueue;
   VkQueue computeQueue;
 
+  VkCommandPool graphicsCommandPool;
+
   VkFormat depthFormat;
 };
 
@@ -77,7 +79,7 @@ struct Swapchain {
   Image              depthAttachment;
 };
 
-enum class CommandBufferState {
+enum class CommandBufferState { // Used for dedicated state tracking
   NotAllocated,
   Ready,
   Recording,
@@ -109,6 +111,8 @@ struct Context {
   bool      recreatingSwapchain;
 
   RenderPass mainRenderPass;
+
+  CommandBuffer *graphicsCommandBuffers; // DArray
 
   bool (*query_memory_type_index)(u32                   requiredType,
                                   VkMemoryPropertyFlags requiredProperty,

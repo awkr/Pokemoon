@@ -58,9 +58,19 @@ void device_create(Context *context) {
   vkGetDeviceQueue(device.handle, device.presentQueueFamily, 0, &device.presentQueue);
   vkGetDeviceQueue(device.handle, device.computeQueueFamily, 0, &device.computeQueue);
   vkGetDeviceQueue(device.handle, device.transferQueueFamily, 0, &device.transferQueue);
+
+  // Create command pool for graphics queue
+  VkCommandPoolCreateInfo commandPoolCreateInfo = {VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+  commandPoolCreateInfo.queueFamilyIndex        = device.graphicsQueueFamily;
+  commandPoolCreateInfo.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+  VK_CHECK(vkCreateCommandPool(
+      device.handle, &commandPoolCreateInfo, context->allocator, &device.graphicsCommandPool));
 }
 
 void device_destroy(Context *context) {
+  vkDestroyCommandPool(
+      context->device.handle, context->device.graphicsCommandPool, context->allocator);
   MEMORY_FREE(context->device.swapchainSupport.formats,
               VkSurfaceFormatKHR,
               context->device.swapchainSupport.formatCount,

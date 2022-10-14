@@ -16,6 +16,7 @@ enum class MemoryTag {
   Event,
   Platform,
   Renderer,
+  CmdBuffer,
   Max,
 };
 
