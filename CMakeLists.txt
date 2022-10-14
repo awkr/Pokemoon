@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 23)
 find_package(Vulkan REQUIRED)
 
 add_subdirectory(third-party/glfw)
+add_subdirectory(third-party/glm)
 
 set(SOURCES
     main.cpp
@@ -28,6 +29,6 @@ add_executable(main ${SOURCES})
 
 target_include_directories(main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(main PRIVATE Vulkan::Vulkan glfw)
+target_link_libraries(main PRIVATE Vulkan::Vulkan glfw glm)
 
 target_compile_options(main PRIVATE "$<$<CONFIG:DEBUG>:-D DEBUG>")
