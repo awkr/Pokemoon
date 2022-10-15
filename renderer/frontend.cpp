@@ -11,10 +11,13 @@ static RendererBackend *backend = nullptr;
 bool begin_frame(f32 deltaTime);
 bool end_frame(f32 deltaTime);
 
-bool renderer_initialize(struct PlatformState *platformState, CString applicationName) {
+bool renderer_initialize(struct PlatformState *platformState,
+                         CString               applicationName,
+                         u32                   width,
+                         u32                   height) {
   backend = (RendererBackend *) memory_allocate(sizeof(RendererBackend), MemoryTag::Renderer);
   renderer_backend_setup(backend);
-  return backend->initialize(backend, platformState, applicationName);
+  return backend->initialize(backend, platformState, applicationName, width, height);
 }
 
 void renderer_shutdown() {
@@ -30,7 +33,7 @@ bool renderer_draw_frame(const RenderPacket &packet) {
   return true;
 }
 
-void renderer_resize(u16 width, u16 height) { backend->resize(backend, width, height); }
+void rendererOnResize(u16 width, u16 height) { backend->resize(backend, width, height); }
 
 bool begin_frame(f32 deltaTime) { return backend->beginFrame(backend, deltaTime); }
 

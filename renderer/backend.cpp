@@ -19,13 +19,14 @@
 
 static Context context{};
 
-// Todo Initialize framebuffer size
-u32 cachedFramebufferWidth  = 480;
-u32 cachedFramebufferHeight = 480;
+u32 cachedFramebufferWidth  = 0;
+u32 cachedFramebufferHeight = 0;
 
 bool initialize(RendererBackend *backend,
                 PlatformState   *platformState,
-                const char      *applicationName);
+                const char      *applicationName,
+                u32              width,
+                u32              height);
 bool shutdown(RendererBackend *backend);
 bool begin_frame(RendererBackend *backend, f32 deltaTime);
 bool end_frame(RendererBackend *backend, f32 deltaTime);
@@ -58,9 +59,13 @@ void renderer_backend_cleanup(RendererBackend *backend) {
 
 bool initialize(RendererBackend *backend,
                 PlatformState   *platformState,
-                const char      *applicationName) {
+                const char      *applicationName,
+                u32              width,
+                u32              height) {
   context.query_memory_type_index = query_memory_type_index;
 
+  cachedFramebufferWidth    = width;
+  cachedFramebufferHeight   = height;
   context.framebufferWidth  = cachedFramebufferWidth;
   context.framebufferHeight = cachedFramebufferHeight;
   cachedFramebufferWidth = cachedFramebufferHeight = 0;
@@ -213,7 +218,11 @@ bool begin_frame(RendererBackend *backend, f32 deltaTime) { return true; }
 
 bool end_frame(RendererBackend *backend, f32 deltaTime) { return true; }
 
-void resize(RendererBackend *backend, u16 width, u16 height) {}
+void resize(RendererBackend *backend, u16 width, u16 height) {
+  cachedFramebufferWidth  = width;
+  cachedFramebufferHeight = height;
+  // Todo Recreate swapchain and related objects
+}
 
 bool query_memory_type_index(u32 requiredType, VkMemoryPropertyFlags requiredProperty, u32 &index) {
   VkPhysicalDeviceMemoryProperties memoryProperties;

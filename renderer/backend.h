@@ -13,7 +13,9 @@ struct Context;
 struct RendererBackend {
   bool (*initialize)(RendererBackend *backend,
                      PlatformState   *platformState,
-                     const char      *applicationName);
+                     const char      *applicationName,
+                     u32              width,
+                     u32              height);
   bool (*shutdown)(RendererBackend *backend);
   void (*resize)(RendererBackend *backend, u16 width, u16 height);
   bool (*beginFrame)(RendererBackend *backend, f32 deltaTime);

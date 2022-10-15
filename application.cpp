@@ -27,7 +27,6 @@ static ApplicationState applicationState{};
 bool initialize();
 bool update(f32 deltaTime);
 bool render();
-void resize();
 
 // Event handles
 bool application_on_event(EventCode           code,
@@ -35,6 +34,7 @@ bool application_on_event(EventCode           code,
                           void               *listener,
                           const EventContext &context);
 bool application_on_key(EventCode code, void *sender, void *listener, const EventContext &context);
+bool applicationOnResize(EventCode code, void *sender, void *listener, const EventContext &context);
 
 void application_create(const ApplicationConfig &config) {
   ASSERT(!initialized);
@@ -45,14 +45,14 @@ void application_create(const ApplicationConfig &config) {
   event_register(EventCode::ApplicationQuit, nullptr, application_on_event);
   event_register(EventCode::KeyReleased, nullptr, application_on_key);
   event_register(EventCode::KeyPressed, nullptr, application_on_key);
+  event_register(EventCode::WindowResized, nullptr, applicationOnResize);
   input_initialize();
   platform_startup(&applicationState.platformState, config.name, config.width, config.height);
-  ASSERT(renderer_initialize(&applicationState.platformState, config.name));
+  ASSERT(renderer_initialize(
+      &applicationState.platformState, config.name, config.width, config.height));
 
   ASSERT(initialize());
 
-  applicationState.width     = config.width;
-  applicationState.height    = config.height;
   applicationState.isRunning = true;
 
   LOG_DEBUG("Hello, Pokemoon.");
@@ -104,6 +104,7 @@ void application_run() {
   renderer_shutdown();
   platform_shutdown(&applicationState.platformState);
   input_shutdown();
+  event_deregister(EventCode::WindowResized, nullptr, applicationOnResize);
   event_deregister(EventCode::KeyPressed, nullptr, application_on_key);
   event_deregister(EventCode::KeyReleased, nullptr, application_on_key);
   event_deregister(EventCode::ApplicationQuit, nullptr, application_on_event);
@@ -156,4 +157,28 @@ bool application_on_key(EventCode code, void *sender, void *listener, const Even
     LOG_DEBUG("Key %d released", key);
   }
   return false;
+}
+
+bool applicationOnResize(EventCode           code,
+                         void               *sender,
+                         void               *listener,
+                         const EventContext &context) {
+  auto width  = context.u32[0];
+  auto height = context.u32[1];
+
+  applicationState.width  = width;
+  applicationState.height = height;
+
+  if (width == 0 || height == 0) { // Handle minimization
+    applicationState.isSuspended = true;
+    return true;
+  }
+
+  if (applicationState.isSuspended) { applicationState.isSuspended = false; } // Resume
+
+  LOG_DEBUG("Window resized: %i, %i", width, height);
+
+  rendererOnResize(width, height);
+
+  return false; // Event purposely not handled to allow other listeners to get this
 }

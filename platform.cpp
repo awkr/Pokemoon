@@ -35,7 +35,12 @@ static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int act
   input_process_key((Key) key, pressed);
 }
 
-static void glfw_framebuffer_size_callback(GLFWwindow *window, int width, int height) {}
+static void glfw_framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+  EventContext context{};
+  context.u32[0] = width;
+  context.u32[1] = height;
+  event_fire(EventCode::WindowResized, nullptr, context);
+}
 
 static void glfw_mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
   bool pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);

@@ -24,6 +24,9 @@ union EventContext { // 128B
 enum class EventCode {
   Unknown = 0x00,
   ApplicationQuit,
+  // Context usage:
+  // u32[0]: width
+  // u32[1]: height
   WindowResized,
   // Context usage:
   // u16 keyCode = .u16[0]

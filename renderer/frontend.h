@@ -11,10 +11,13 @@ struct RenderPacket {
   f32 deltaTime;
 };
 
-bool renderer_initialize(struct PlatformState *platformState, CString applicationName);
+bool renderer_initialize(struct PlatformState *platformState,
+                         CString               applicationName,
+                         u32                   width,
+                         u32                   height);
 void renderer_shutdown();
 
 bool renderer_draw_frame(const RenderPacket &packet);
-void renderer_resize(u16 width, u16 height);
+void rendererOnResize(u16 width, u16 height);
 
 #endif // POKEMOON_FRONTEND_H
