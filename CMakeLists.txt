@@ -25,7 +25,9 @@ set(SOURCES
     renderer/swapchain.cpp
     renderer/image.cpp
     renderer/render_pass.cpp
-    renderer/command_buffer.cpp)
+    renderer/command_buffer.cpp
+    renderer/framebuffer.cpp
+    renderer/fence.cpp)
 
 add_executable(main ${SOURCES})
 

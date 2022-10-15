@@ -51,6 +51,8 @@ void application_create(const ApplicationConfig &config) {
 
   ASSERT(initialize());
 
+  applicationState.width     = config.width;
+  applicationState.height    = config.height;
   applicationState.isRunning = true;
 
   LOG_DEBUG("Hello, Pokemoon.");
@@ -109,6 +111,11 @@ void application_run() {
   logging_shutdown();
 
   LOG_INFO(memory_get_usage());
+}
+
+void application_get_framebuffer_size(u32 &width, u32 &height) {
+  width  = applicationState.width;
+  height = applicationState.height;
 }
 
 bool initialize() { return true; }

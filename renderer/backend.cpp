@@ -9,6 +9,8 @@
 #include "platform.h"
 #include "renderer/command_buffer.h"
 #include "renderer/device.h"
+#include "renderer/fence.h"
+#include "renderer/framebuffer.h"
 #include "renderer/render_pass.h"
 #include "renderer/swapchain.h"
 #include "renderer/types.h"
@@ -16,6 +18,10 @@
 // ------- Vulkan implementations -------
 
 static Context context{};
+
+// Todo Initialize framebuffer size
+u32 cachedFramebufferWidth  = 480;
+u32 cachedFramebufferHeight = 480;
 
 bool initialize(RendererBackend *backend,
                 PlatformState   *platformState,
@@ -25,6 +31,7 @@ bool begin_frame(RendererBackend *backend, f32 deltaTime);
 bool end_frame(RendererBackend *backend, f32 deltaTime);
 void resize(RendererBackend *backend, u16 width, u16 height);
 bool query_memory_type_index(u32 requiredType, VkMemoryPropertyFlags requiredProperty, u32 &index);
+void create_framebuffers(RendererBackend *backend, Swapchain *swapchain, RenderPass *renderPass);
 void create_command_buffers(RendererBackend *backend);
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
@@ -53,6 +60,10 @@ bool initialize(RendererBackend *backend,
                 PlatformState   *platformState,
                 const char      *applicationName) {
   context.query_memory_type_index = query_memory_type_index;
+
+  context.framebufferWidth  = cachedFramebufferWidth;
+  context.framebufferHeight = cachedFramebufferHeight;
+  cachedFramebufferWidth = cachedFramebufferHeight = 0;
 
   VkApplicationInfo applicationInfo  = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
   applicationInfo.apiVersion         = VK_API_VERSION_1_3;
@@ -130,17 +141,60 @@ bool initialize(RendererBackend *backend,
                      0,
                      &context.mainRenderPass);
 
+  context.swapchain.framebuffers =
+      DARRAY_RESERVE(Framebuffer, context.swapchain.imageCount, MemoryTag::Renderer);
+  create_framebuffers(backend, &context.swapchain, &context.mainRenderPass);
+
   create_command_buffers(backend);
+
+  // Create sync objects
+  context.imageAcquiredSemaphores =
+      DARRAY_RESERVE(VkSemaphore, context.swapchain.maxFramesInFlight, MemoryTag::Renderer);
+  context.drawCompleteSemaphores =
+      DARRAY_RESERVE(VkSemaphore, context.swapchain.maxFramesInFlight, MemoryTag::Renderer);
+  context.inFlightFences =
+      DARRAY_RESERVE(Fence, context.swapchain.maxFramesInFlight, MemoryTag::Renderer);
+
+  for (u8 i = 0; i < context.swapchain.maxFramesInFlight; ++i) {
+    VkSemaphoreCreateInfo createInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+    vkCreateSemaphore(
+        context.device.handle, &createInfo, context.allocator, &context.imageAcquiredSemaphores[i]);
+    vkCreateSemaphore(
+        context.device.handle, &createInfo, context.allocator, &context.drawCompleteSemaphores[i]);
+
+    fence_create(&context, true, &context.inFlightFences[i]); // Create the fence in signaled state
+  }
+
+  context.imagesInFlight =
+      DARRAY_RESERVE(Fence *, context.swapchain.imageCount, MemoryTag::Renderer);
 
   return true;
 }
 
 bool shutdown(RendererBackend *backend) {
+  vkDeviceWaitIdle(context.device.handle);
+
+  darray_destroy(context.imagesInFlight);
+  for (u8 i = 0; i < context.swapchain.maxFramesInFlight; ++i) {
+    fence_destroy(&context, &context.inFlightFences[i]);
+    vkDestroySemaphore(context.device.handle, context.drawCompleteSemaphores[i], context.allocator);
+    vkDestroySemaphore(
+        context.device.handle, context.imageAcquiredSemaphores[i], context.allocator);
+  }
+  darray_destroy(context.inFlightFences);
+  darray_destroy(context.drawCompleteSemaphores);
+  darray_destroy(context.imageAcquiredSemaphores);
+
   for (u32 i = 0; i < context.swapchain.imageCount; ++i) {
     command_buffer_free(
         &context, context.device.graphicsCommandPool, &context.graphicsCommandBuffers[i]);
   }
   darray_destroy(context.graphicsCommandBuffers);
+
+  for (u32 i = 0; i < context.swapchain.imageCount; ++i) {
+    framebuffer_destroy(&context, &context.swapchain.framebuffers[i]);
+  }
+  darray_destroy(context.swapchain.framebuffers);
 
   render_pass_destroy(&context, &context.mainRenderPass);
   swapchain_destroy(&context, &context.swapchain);
@@ -174,9 +228,26 @@ bool query_memory_type_index(u32 requiredType, VkMemoryPropertyFlags requiredPro
   return false;
 }
 
+void create_framebuffers(RendererBackend *backend, Swapchain *swapchain, RenderPass *renderPass) {
+  for (u32 i = 0; i < context.swapchain.imageCount; ++i) {
+    u32         attachmentCount = 2;
+    VkImageView attachments[]   = {
+        swapchain->views[i],
+        swapchain->depthAttachment.view,
+    };
+    framebuffer_create(&context,
+                       renderPass,
+                       context.framebufferWidth,
+                       context.framebufferHeight,
+                       attachmentCount,
+                       attachments,
+                       &context.swapchain.framebuffers[i]);
+  }
+}
+
 void create_command_buffers(RendererBackend *backend) {
   context.graphicsCommandBuffers =
-      DARRAY_RESERVE_TAG(CommandBuffer, context.swapchain.imageCount, MemoryTag::CmdBuffer);
+      DARRAY_RESERVE(CommandBuffer, context.swapchain.imageCount, MemoryTag::Renderer);
   for (u32 i = 0; i < context.swapchain.imageCount; ++i) {
     command_buffer_allocate(
         &context, context.device.graphicsCommandPool, true, &context.graphicsCommandBuffers[i]);

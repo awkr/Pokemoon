@@ -48,9 +48,7 @@ void darray_length_set(void *array, u64 n);
 #define DARRAY_CREATE_TAG(type, tag)                                                               \
   (typeof(type) *) darray_create(DARRAY_DEFAULT_CAPACITY, sizeof(type), tag)
 
-#define DARRAY_RESERVE(type, capacity) (typeof(type) *) darray_create(capacity, sizeof(type))
-
-#define DARRAY_RESERVE_TAG(type, capacity, tag)                                                    \
+#define DARRAY_RESERVE(type, capacity, tag)                                                        \
   (typeof(type) *) darray_create(capacity, sizeof(type), tag)
 
 #define DARRAY_PUSH(array, value)                                                                  \

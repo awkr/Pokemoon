@@ -16,7 +16,6 @@ enum class MemoryTag {
   Event,
   Platform,
   Renderer,
-  CmdBuffer,
   Max,
 };
 
@@ -24,6 +23,7 @@ void memory_initialize();
 void memory_shutdown();
 
 void *memory_allocate(u64 size, MemoryTag tag);
+void *memory_allocate(u64 stride, u32 n, MemoryTag tag);
 void  memory_free(void *block, u64 size, MemoryTag tag);
 void  memory_free(void *block, u64 stride, u64 n, MemoryTag tag);
 void *memory_zero(void *block, u64 size);

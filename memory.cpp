@@ -22,7 +22,6 @@ static CString memoryTags[(u16) MemoryTag::Max] = {
     "Event",
     "Platform",
     "Renderer",
-    "CmdBuffer",
 };
 
 static MemoryStats memoryStats{};
@@ -39,6 +38,8 @@ void *memory_allocate(u64 size, MemoryTag tag) {
   platform_zero_memory(block, size);
   return block;
 }
+
+void *memory_allocate(u64 stride, u32 n, MemoryTag tag) { return memory_allocate(stride * n, tag); }
 
 void memory_free(void *block, u64 size, MemoryTag tag) {
   if (tag == MemoryTag::Unknown) { LOG_WARN("Freeing unknown memory"); }

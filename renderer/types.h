@@ -69,6 +69,13 @@ struct RenderPass {
   RenderPassState state;
 };
 
+struct Framebuffer {
+  VkFramebuffer handle;
+  u32           attachmentCount;
+  VkImageView  *attachments;
+  RenderPass   *renderPass;
+};
+
 struct Swapchain {
   VkSurfaceFormatKHR imageFormat;
   u8                 maxFramesInFlight;
@@ -77,6 +84,7 @@ struct Swapchain {
   VkImage           *images;
   VkImageView       *views;
   Image              depthAttachment;
+  Framebuffer       *framebuffers; // Framebuffers used for on-screen rendering
 };
 
 enum class CommandBufferState { // Used for dedicated state tracking
@@ -93,6 +101,11 @@ struct CommandBuffer {
   CommandBufferState state;
 };
 
+struct Fence {
+  VkFence handle;
+  bool    isSignaled;
+};
+
 struct Context {
   VkInstance             instance;
   VkAllocationCallbacks *allocator;
@@ -107,12 +120,21 @@ struct Context {
 
   Swapchain swapchain;
   u32       imageIndex;
-  u64       currentFrame;
+  u64       currentFrame; // [0, Swapchain::maxFramesInFlight - 1]
   bool      recreatingSwapchain;
 
   RenderPass mainRenderPass;
 
   CommandBuffer *graphicsCommandBuffers; // DArray
+
+  // [0, Swapchain::maxFramesInFlight - 1]
+  VkSemaphore *imageAcquiredSemaphores; // When an image is done presenting, it can be acquired to
+                                        // rendered to
+  VkSemaphore *drawCompleteSemaphores;  // Means image is ready to be presented
+  u32          inFlightFenceCount;
+  Fence       *inFlightFences;
+
+  Fence **imagesInFlight; // [0, Swapchain::imageCount - 1]
 
   bool (*query_memory_type_index)(u32                   requiredType,
                                   VkMemoryPropertyFlags requiredProperty,

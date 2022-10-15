@@ -67,6 +67,9 @@ void swapchain_present(Context    *context,
   } else if (result != VK_SUCCESS) {
     LOG_ERROR("Failed to present swapchain image");
   }
+
+  // Increase (and loop) the index
+  context->currentFrame = (context->currentFrame + 1) % swapchain->maxFramesInFlight;
 }
 
 void create(Context *context, u32 width, u32 height, Swapchain *out) {
