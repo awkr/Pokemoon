@@ -94,7 +94,7 @@ void input_process_mouse_button(MouseButton button, bool pressed) {
 
 void input_process_mouse_move(f32 x, f32 y) {
   if (inputState.mouseCurrent.x != x || inputState.mouseCurrent.y != y) {
-    LOG_TRACE("Mouse position: %f %f", x, y);
+    // LOG_TRACE("Mouse position: %f %f", x, y);
 
     inputState.mouseCurrent.x = x;
     inputState.mouseCurrent.y = y;

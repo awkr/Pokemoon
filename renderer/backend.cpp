@@ -34,6 +34,7 @@ void resize(RendererBackend *backend, u16 width, u16 height);
 bool query_memory_type_index(u32 requiredType, VkMemoryPropertyFlags requiredProperty, u32 &index);
 void create_framebuffers(RendererBackend *backend, Swapchain *swapchain, RenderPass *renderPass);
 void create_command_buffers(RendererBackend *backend);
+bool recreateSwapchain(RendererBackend *backend);
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
@@ -68,7 +69,8 @@ bool initialize(RendererBackend *backend,
   cachedFramebufferHeight   = height;
   context.framebufferWidth  = cachedFramebufferWidth;
   context.framebufferHeight = cachedFramebufferHeight;
-  cachedFramebufferWidth = cachedFramebufferHeight = 0;
+  cachedFramebufferWidth    = 0;
+  cachedFramebufferHeight   = 0;
 
   VkApplicationInfo applicationInfo  = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
   applicationInfo.apiVersion         = VK_API_VERSION_1_3;
@@ -154,11 +156,11 @@ bool initialize(RendererBackend *backend,
 
   // Create sync objects
   context.imageAcquiredSemaphores =
-      DARRAY_RESERVE(VkSemaphore, context.swapchain.maxFramesInFlight, MemoryTag::Renderer);
+      DARRAY_RESERVE(VkSemaphore, context.swapchain.maxFramesInFlight, MemoryTag::Semaphore);
   context.drawCompleteSemaphores =
-      DARRAY_RESERVE(VkSemaphore, context.swapchain.maxFramesInFlight, MemoryTag::Renderer);
+      DARRAY_RESERVE(VkSemaphore, context.swapchain.maxFramesInFlight, MemoryTag::Semaphore);
   context.inFlightFences =
-      DARRAY_RESERVE(Fence, context.swapchain.maxFramesInFlight, MemoryTag::Renderer);
+      DARRAY_RESERVE(Fence, context.swapchain.maxFramesInFlight, MemoryTag::Fence);
 
   for (u8 i = 0; i < context.swapchain.maxFramesInFlight; ++i) {
     VkSemaphoreCreateInfo createInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
@@ -214,14 +216,126 @@ bool shutdown(RendererBackend *backend) {
   return true;
 }
 
-bool begin_frame(RendererBackend *backend, f32 deltaTime) { return true; }
+bool begin_frame(RendererBackend *backend, f32 deltaTime) {
+  auto device = context.device;
+  if (context.recreatingSwapchain) {
+    VK_CHECK(vkDeviceWaitIdle(device.handle));
+    return false;
+  }
+  if (context.framebufferSizeGeneration != context.framebufferSizeLastGeneration) {
+    VK_CHECK(vkDeviceWaitIdle(device.handle));
+    if (!recreateSwapchain(backend)) { return false; }
+    return false;
+  }
 
-bool end_frame(RendererBackend *backend, f32 deltaTime) { return true; }
+  // Wait for the execution of the current frame to complete. The fence being free will allow us to
+  // move on
+  assert(fence_wait(&context, &context.inFlightFences[context.currentFrame]));
+
+  // Acquire the next image from the swapchain. Pass along the semaphore that should be signaled
+  // when completes. The same semaphore will later be waited on by the queue submission to ensure
+  // the image is available
+  assert(swapchain_acquire_next_image(&context,
+                                      &context.swapchain,
+                                      UINT64_MAX,
+                                      context.imageAcquiredSemaphores[context.currentFrame],
+                                      nullptr,
+                                      &context.imageIndex));
+
+  // Begin recording commands
+  auto commandBuffer = &(context.graphicsCommandBuffers[context.imageIndex]);
+
+  command_buffer_reset(commandBuffer);
+
+  command_buffer_begin(commandBuffer, false, false, false);
+
+  // Dynamic states
+  VkViewport viewport{};
+  viewport.x        = 0;
+  viewport.y        = (f32) context.framebufferHeight;
+  viewport.width    = (f32) context.framebufferWidth;
+  viewport.height   = -(f32) context.framebufferHeight;
+  viewport.minDepth = 0;
+  viewport.maxDepth = 1;
+
+  VkRect2D scissor{};
+  scissor.offset.x = scissor.offset.y = 0;
+  scissor.extent.width                = context.framebufferWidth;
+  scissor.extent.height               = context.framebufferHeight;
+
+  vkCmdSetViewport(commandBuffer->handle, 0, 1, &viewport);
+  vkCmdSetScissor(commandBuffer->handle, 0, 1, &scissor);
+
+  context.mainRenderPass.renderArea = {{0, 0},
+                                       {context.framebufferWidth, context.framebufferHeight}};
+
+  render_pass_begin(commandBuffer,
+                    &context.mainRenderPass,
+                    context.swapchain.framebuffers[context.imageIndex].handle);
+
+  return true;
+}
+
+bool end_frame(RendererBackend *backend, f32 deltaTime) {
+  auto commandBuffer = &(context.graphicsCommandBuffers[context.imageIndex]);
+
+  render_pass_end(commandBuffer, &context.mainRenderPass);
+
+  command_buffer_end(commandBuffer);
+
+  // Make sure the previous frame is not using this image (i.e. its fence is being waited on)
+  if (context.imagesInFlight[context.imageIndex]) {
+    fence_wait(&context, context.imagesInFlight[context.imageIndex]);
+  }
+
+  // Mark the image fence as in-use by this frame
+  context.imagesInFlight[context.imageIndex] = &context.inFlightFences[context.currentFrame];
+
+  fence_reset(&context, &context.inFlightFences[context.currentFrame]);
+
+  // Submit the queue and wait for the operation to complete
+  VkSubmitInfo submitInfo = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+
+  // Command buffer(s) to be executed
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers    = &commandBuffer->handle;
+
+  // The semaphore(s) to be signaled when the queue is complete
+  submitInfo.signalSemaphoreCount = 1;
+  submitInfo.pSignalSemaphores    = &context.drawCompleteSemaphores[context.currentFrame];
+
+  // Wait semaphore ensures that the operation cannot begin until the image is available
+  submitInfo.waitSemaphoreCount = 1;
+  submitInfo.pWaitSemaphores    = &context.imageAcquiredSemaphores[context.currentFrame];
+
+  // Each semaphore waits on a corresponding pipeline stage to complete.
+  // VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT prevents subsequent color attachment writes from
+  // executing until the semaphore signals (i.e. one frame is presented at a time)
+  VkPipelineStageFlags flags[1] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+  submitInfo.pWaitDstStageMask  = flags;
+
+  VK_CHECK(vkQueueSubmit(context.device.graphicsQueue,
+                         1,
+                         &submitInfo,
+                         context.inFlightFences[context.currentFrame].handle));
+
+  command_buffer_update_submitted(commandBuffer);
+
+  // Give the image back to the swapchain
+  swapchain_present(&context,
+                    &context.swapchain,
+                    context.device.graphicsQueue,
+                    context.device.presentQueue,
+                    context.drawCompleteSemaphores[context.currentFrame],
+                    context.imageIndex);
+
+  return true;
+}
 
 void resize(RendererBackend *backend, u16 width, u16 height) {
   cachedFramebufferWidth  = width;
   cachedFramebufferHeight = height;
-  // Todo Recreate swapchain and related objects
+  context.framebufferSizeGeneration++;
 }
 
 bool query_memory_type_index(u32 requiredType, VkMemoryPropertyFlags requiredProperty, u32 &index) {
@@ -255,12 +369,42 @@ void create_framebuffers(RendererBackend *backend, Swapchain *swapchain, RenderP
 }
 
 void create_command_buffers(RendererBackend *backend) {
-  context.graphicsCommandBuffers =
-      DARRAY_RESERVE(CommandBuffer, context.swapchain.imageCount, MemoryTag::Renderer);
+  if (!context.graphicsCommandBuffers) {
+    context.graphicsCommandBuffers =
+        DARRAY_RESERVE(CommandBuffer, context.swapchain.imageCount, MemoryTag::CommandBuffer);
+  }
   for (u32 i = 0; i < context.swapchain.imageCount; ++i) {
     command_buffer_allocate(
         &context, context.device.graphicsCommandPool, true, &context.graphicsCommandBuffers[i]);
   }
+}
+
+bool recreateSwapchain(RendererBackend *backend) {
+  if (context.recreatingSwapchain) { return false; }
+  if (cachedFramebufferWidth == 0 || cachedFramebufferHeight == 0) { return false; }
+  vkDeviceWaitIdle(context.device.handle);
+  context.recreatingSwapchain = true; // Set flag
+  // Cleanup
+  for (u32 i = 0; i < context.swapchain.imageCount; ++i) {
+    context.imagesInFlight[i] = nullptr;
+    command_buffer_free(
+        &context, context.device.graphicsCommandPool, &context.graphicsCommandBuffers[i]);
+    framebuffer_destroy(&context, &context.swapchain.framebuffers[i]);
+  }
+  // Recreate
+  swapchain_recreate(&context, cachedFramebufferWidth, cachedFramebufferHeight, &context.swapchain);
+  // Sync the framebuffer size with the cached size
+  context.framebufferWidth              = cachedFramebufferWidth;
+  context.framebufferHeight             = cachedFramebufferHeight;
+  cachedFramebufferWidth                = 0;
+  cachedFramebufferHeight               = 0;
+  context.framebufferSizeLastGeneration = context.framebufferSizeGeneration;
+  context.mainRenderPass.renderArea     = {{0, 0},
+                                       {context.framebufferWidth, context.framebufferHeight}};
+  create_framebuffers(backend, &context.swapchain, &context.mainRenderPass);
+  create_command_buffers(backend);
+  context.recreatingSwapchain = false; // Clear flag
+  return true;
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL

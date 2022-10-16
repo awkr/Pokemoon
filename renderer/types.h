@@ -117,6 +117,12 @@ struct Context {
 
   u32 framebufferWidth;
   u32 framebufferHeight;
+  // Current generation of framebuffer size. If it does not match `framebufferSizeLastGeneration`, a
+  // new one should be generated
+  u64 framebufferSizeGeneration;
+  // The generation of the framebuffer when it was last created. Set to `framebufferSizeGeneration`
+  // when updated
+  u64 framebufferSizeLastGeneration;
 
   Swapchain swapchain;
   u32       imageIndex;

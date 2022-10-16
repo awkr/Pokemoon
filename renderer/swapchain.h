@@ -15,7 +15,7 @@ void swapchain_destroy(Context *context, Swapchain *swapchain);
 
 bool swapchain_acquire_next_image(Context    *context,
                                   Swapchain  *swapchain,
-                                  u32         timeout, // In nanoseconds
+                                  u64         timeoutNs, // In nanoseconds
                                   VkSemaphore imageAvailableSemaphore,
                                   VkFence     fence,
                                   u32        *outImageIndex);

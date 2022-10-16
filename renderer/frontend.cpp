@@ -4,6 +4,7 @@
 
 #include "frontend.h"
 #include "backend.h"
+#include "logging.h"
 #include "memory.h"
 
 static RendererBackend *backend = nullptr;
@@ -33,7 +34,13 @@ bool renderer_draw_frame(const RenderPacket &packet) {
   return true;
 }
 
-void rendererOnResize(u16 width, u16 height) { backend->resize(backend, width, height); }
+void rendererOnResize(u16 width, u16 height) {
+  if (backend) {
+    backend->resize(backend, width, height);
+  } else {
+    LOG_WARN("Renderer backend does not exist to accept size: %i %i", width, height);
+  }
+}
 
 bool begin_frame(f32 deltaTime) { return backend->beginFrame(backend, deltaTime); }
 

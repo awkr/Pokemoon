@@ -11,7 +11,7 @@ void fence_create(Context *context, bool isSignaled, Fence *outFence);
 
 void fence_destroy(Context *context, Fence *fence);
 
-bool fence_wait(Context *context, Fence *fence, u64 timeoutNs);
+bool fence_wait(Context *context, Fence *fence, u64 timeoutNs = UINT64_MAX);
 
 void fence_reset(Context *context, Fence *fence);
 

@@ -48,8 +48,12 @@ void application_create(const ApplicationConfig &config) {
   event_register(EventCode::WindowResized, nullptr, applicationOnResize);
   input_initialize();
   platform_startup(&applicationState.platformState, config.name, config.width, config.height);
+
+  u32 framebufferWidth  = 0;
+  u32 framebufferHeight = 0;
+  platformGetFramebufferSize(&applicationState.platformState, framebufferWidth, framebufferHeight);
   ASSERT(renderer_initialize(
-      &applicationState.platformState, config.name, config.width, config.height));
+      &applicationState.platformState, config.name, framebufferWidth, framebufferHeight));
 
   ASSERT(initialize());
 
@@ -114,11 +118,6 @@ void application_run() {
   LOG_INFO(memory_get_usage());
 }
 
-void application_get_framebuffer_size(u32 &width, u32 &height) {
-  width  = applicationState.width;
-  height = applicationState.height;
-}
-
 bool initialize() { return true; }
 
 bool update(f32 deltaTime) { return true; }
@@ -176,7 +175,7 @@ bool applicationOnResize(EventCode           code,
 
   if (applicationState.isSuspended) { applicationState.isSuspended = false; } // Resume
 
-  LOG_DEBUG("Window resized: %i, %i", width, height);
+  // LOG_DEBUG("Window resized: %i, %i", width, height);
 
   rendererOnResize(width, height);
 

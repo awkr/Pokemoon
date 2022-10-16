@@ -104,6 +104,11 @@ f64 platform_get_absolute_time() { return glfwGetTime(); }
 
 void platform_sleep(u64 ms) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); }
 
+void platformGetFramebufferSize(PlatformState *state, u32 &width, u32 &height) {
+  auto internalState = (PlatformInternalState *) state->internalState;
+  glfwGetFramebufferSize(internalState->window, (int *) (&width), (int *) (&height));
+}
+
 void platform_get_required_extension(CString *&extensions) {
   DARRAY_PUSH(extensions, &VK_EXT_METAL_SURFACE_EXTENSION_NAME);
 }

@@ -16,6 +16,11 @@ enum class MemoryTag {
   Event,
   Platform,
   Renderer,
+  CommandBuffer,
+  Semaphore,
+  Fence,
+  Image,
+  ImageView,
   Max,
 };
 
@@ -32,7 +37,11 @@ void *memory_set(void *dst, i32 value, u64 size);
 
 char *memory_get_usage();
 
-#define MEMORY_ALLOCATE(type, n, tag)    (typeof(type) *) memory_allocate(sizeof(type) * (n), tag);
-#define MEMORY_FREE(block, type, n, tag) memory_free(block, sizeof(type), n, tag);
+#define MEMORY_ALLOCATE(type, n, tag) (typeof(type) *) memory_allocate(sizeof(type) * (n), tag);
+#define MEMORY_FREE(block, type, n, tag)                                                           \
+  {                                                                                                \
+    memory_free(block, sizeof(type), n, tag);                                                      \
+    block = nullptr;                                                                               \
+  }
 
 #endif // POKEMOON_MEMORY_H

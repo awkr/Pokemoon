@@ -26,13 +26,13 @@ void swapchain_destroy(Context *context, Swapchain *swapchain) { destroy(context
 
 bool swapchain_acquire_next_image(Context    *context,
                                   Swapchain  *swapchain,
-                                  u32         timeout,
+                                  u64         timeoutNs,
                                   VkSemaphore imageAvailableSemaphore,
                                   VkFence     fence,
                                   u32        *outImageIndex) {
   auto result = vkAcquireNextImageKHR(context->device.handle,
                                       swapchain->handle,
-                                      timeout,
+                                      timeoutNs,
                                       imageAvailableSemaphore,
                                       fence,
                                       outImageIndex);
@@ -155,15 +155,13 @@ void create(Context *context, u32 width, u32 height, Swapchain *out) {
 
   // Images
   VK_CHECK(vkGetSwapchainImagesKHR(context->device.handle, out->handle, &out->imageCount, nullptr));
-  if (!out->images) {
-    out->images = MEMORY_ALLOCATE(VkImage, out->imageCount, MemoryTag::Renderer);
-  }
+  if (!out->images) { out->images = MEMORY_ALLOCATE(VkImage, out->imageCount, MemoryTag::Image); }
   VK_CHECK(
       vkGetSwapchainImagesKHR(context->device.handle, out->handle, &out->imageCount, out->images));
 
   // Views
   if (!out->views) {
-    out->views = MEMORY_ALLOCATE(VkImageView, out->imageCount, MemoryTag::Renderer);
+    out->views = MEMORY_ALLOCATE(VkImageView, out->imageCount, MemoryTag::ImageView);
   }
   for (u32 i = 0; i < out->imageCount; ++i) {
     image_view_create(context,
@@ -190,11 +188,13 @@ void create(Context *context, u32 width, u32 height, Swapchain *out) {
 }
 
 void destroy(Context *context, Swapchain *swapchain) {
+  vkDeviceWaitIdle(context->device.handle);
   image_destroy(context, &swapchain->depthAttachment);
   for (u32 i = 0; i < swapchain->imageCount; ++i) {
     vkDestroyImageView(context->device.handle, swapchain->views[i], context->allocator);
   }
-  MEMORY_FREE(swapchain->views, VkImageView, swapchain->imageCount, MemoryTag::Renderer);
-  MEMORY_FREE(swapchain->images, VkImage, swapchain->imageCount, MemoryTag::Renderer);
+  MEMORY_FREE(swapchain->views, VkImageView, swapchain->imageCount, MemoryTag::ImageView);
+  MEMORY_FREE(swapchain->images, VkImage, swapchain->imageCount, MemoryTag::Image);
   vkDestroySwapchainKHR(context->device.handle, swapchain->handle, context->allocator);
+  LOG_DEBUG("Swapchain destroyed");
 }

@@ -35,4 +35,6 @@ f64 platform_get_absolute_time();
 
 void platform_sleep(u64 ms);
 
+void platformGetFramebufferSize(PlatformState *state, u32 &width, u32 &height);
+
 #endif // POKEMOON_PLATFORM_H

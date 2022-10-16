@@ -17,6 +17,4 @@ void application_create(const ApplicationConfig &config);
 
 void application_run();
 
-void application_get_framebuffer_size(u32 &width, u32 &height);
-
 #endif // POKEMOON_APPLICATION_H

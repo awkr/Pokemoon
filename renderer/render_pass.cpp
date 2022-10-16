@@ -13,6 +13,11 @@ void render_pass_create(Context        *context,
                         f32             depth,
                         u32             stencil,
                         RenderPass     *outRenderPass) {
+  outRenderPass->renderArea = rendArea;
+  outRenderPass->clearColor = clearColor;
+  outRenderPass->depth      = depth;
+  outRenderPass->stencil    = stencil;
+
   // Main subpass
   VkSubpassDescription subpass = {};
   subpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;

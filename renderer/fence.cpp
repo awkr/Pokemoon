@@ -22,7 +22,10 @@ void fence_destroy(Context *context, Fence *fence) {
 bool fence_wait(Context *context, Fence *fence, u64 timeoutNs) {
   if (fence->isSignaled) { return true; }
   auto result = vkWaitForFences(context->device.handle, 1, &fence->handle, true, timeoutNs);
-  if (result == VK_SUCCESS) { return true; }
+  if (result == VK_SUCCESS) {
+    fence->isSignaled = true;
+    return true;
+  }
   return false;
 }
 
