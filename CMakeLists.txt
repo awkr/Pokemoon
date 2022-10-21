@@ -27,7 +27,8 @@ set(SOURCES
     renderer/render_pass.cpp
     renderer/command_buffer.cpp
     renderer/framebuffer.cpp
-    renderer/fence.cpp)
+    renderer/fence.cpp
+    memory/LinearAllocator.cpp)
 
 add_executable(main ${SOURCES})
 

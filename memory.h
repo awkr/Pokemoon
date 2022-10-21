@@ -7,8 +7,9 @@
 
 #include "defines.h"
 
-enum class MemoryTag {
+enum class MemoryTag : u16 {
   Unknown = 0,
+  LINEAR_ALLOCATOR,
   Array,
   DArray,
   String,

@@ -15,6 +15,7 @@ struct MemoryStats {
 
 static CString memoryTags[(u16) MemoryTag::Max] = {
     "Unknown",
+    "LINEAR_ALLOCATOR",
     "Array",
     "DArray",
     "String",
@@ -86,7 +87,7 @@ char *memory_get_usage() {
       amount  = (f64) memoryStats.taggedAllocations[i];
     }
     auto length = snprintf(
-        buffer + offset, 2 * KiB - offset, "\n%-13s: %6.2f %s", memoryTags[i], amount, unit);
+        buffer + offset, 2 * KiB - offset, "\n%-16s: %6.2f %s", memoryTags[i], amount, unit);
     offset += length;
   }
   return strdup(buffer);
