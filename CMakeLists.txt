@@ -18,7 +18,7 @@ set(SOURCES
     event.cpp
     container/darray.cpp
     input.cpp
-    core/clock.cpp
+    core/Clock.cpp
     renderer/frontend.cpp
     renderer/backend.cpp
     renderer/device.cpp

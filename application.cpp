@@ -3,7 +3,7 @@
 //
 
 #include "application.h"
-#include "core/clock.h"
+#include "core/Clock.h"
 #include "event.h"
 #include "input.h"
 #include "logging.h"
@@ -65,16 +65,16 @@ void application_create(const ApplicationConfig &config) {
 }
 
 void application_run() {
-  clock_start(&applicationState.clock);
-  clock_update(&applicationState.clock);
-  applicationState.lastTime    = applicationState.clock.elapsed;
+  applicationState.clock.start();
+  applicationState.clock.tick();
+  applicationState.lastTime    = applicationState.clock.elapsed();
   const f64 targetFrameSeconds = 1.0f / 60;
 
   while (applicationState.isRunning) {
     platform_poll_events(&applicationState.platformState);
     if (!applicationState.isSuspended) {
-      clock_update(&applicationState.clock);
-      f64 currentTime           = applicationState.clock.elapsed;
+      applicationState.clock.tick();
+      f64 currentTime           = applicationState.clock.elapsed();
       f64 deltaTime             = currentTime - applicationState.lastTime;
       applicationState.lastTime = currentTime;
       f64 frameStartTime        = platform_get_absolute_time();
