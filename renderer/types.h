@@ -106,6 +106,23 @@ struct Fence {
   bool    isSignaled;
 };
 
+struct ShaderStage {
+  VkShaderModule                  module;
+  VkPipelineShaderStageCreateInfo shaderStageCreateInfo;
+};
+
+struct Pipeline {
+  VkPipeline       handle;
+  VkPipelineLayout layout;
+};
+
+#define OBJECT_SHADER_STATE_COUNT 2 // Vertex, fragment
+
+struct ObjectShader {
+  ShaderStage stages[OBJECT_SHADER_STATE_COUNT];
+  Pipeline    pipeline;
+};
+
 struct Context {
   VkInstance             instance;
   VkAllocationCallbacks *allocator;
@@ -128,6 +145,8 @@ struct Context {
   u32       imageIndex;
   u64       currentFrame; // [0, Swapchain::maxFramesInFlight - 1]
   bool      recreatingSwapchain;
+
+  ObjectShader objectShader;
 
   RenderPass mainRenderPass;
 

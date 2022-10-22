@@ -18,6 +18,7 @@ set(SOURCES
     event.cpp
     container/darray.cpp
     input.cpp
+    StringUtils.cpp
     core/Clock.cpp
     renderer/frontend.cpp
     renderer/backend.cpp
@@ -28,7 +29,9 @@ set(SOURCES
     renderer/command_buffer.cpp
     renderer/framebuffer.cpp
     renderer/fence.cpp
-    memory/LinearAllocator.cpp)
+    renderer/shaders/ObjectShader.cpp
+    memory/LinearAllocator.cpp
+    platform/filesystem.cpp)
 
 add_executable(main ${SOURCES})
 

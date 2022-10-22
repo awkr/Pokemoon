@@ -6,12 +6,12 @@
 #include "container/darray.h"
 #include "logging.h"
 #include "memory.h"
-#include "platform.h"
 #include "renderer/command_buffer.h"
 #include "renderer/device.h"
 #include "renderer/fence.h"
 #include "renderer/framebuffer.h"
 #include "renderer/render_pass.h"
+#include "renderer/shaders/ObjectShader.h"
 #include "renderer/swapchain.h"
 #include "renderer/types.h"
 
@@ -167,11 +167,16 @@ bool initialize(RendererBackend *backend, const char *appName, u32 width, u32 he
   context.imagesInFlight =
       DARRAY_RESERVE(Fence *, context.swapchain.imageCount, MemoryTag::Renderer);
 
+  // Create builtin shaders
+  ASSERT(object_shader_create(&context, &context.objectShader));
+
   return true;
 }
 
 bool shutdown(RendererBackend *backend) {
   vkDeviceWaitIdle(context.device.handle);
+
+  object_shader_destroy(&context, &context.objectShader);
 
   darray_destroy(context.imagesInFlight);
   for (u8 i = 0; i < context.swapchain.maxFramesInFlight; ++i) {

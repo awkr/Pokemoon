@@ -23,7 +23,7 @@ static CString memoryTags[MEMORY_TAG_COUNT] = {
     "LINEAR_ALLOCATOR",
     "Array",
     "DArray",
-    "String",
+    "STRING",
     "Texture",
     "Event",
     "Platform",

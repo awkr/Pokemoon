@@ -13,7 +13,7 @@ enum class MemoryTag : u16 {
   LINEAR_ALLOCATOR,
   Array,
   DArray,
-  String,
+  STRING,
   Texture,
   Event,
   Platform,
@@ -38,7 +38,7 @@ void *memory_copy(void *dst, const void *src, u64 size);
 void *memory_set(void *dst, i32 value, u64 size);
 
 char *memory_get_usage();
-u64 memory_get_alloc_count();
+u64   memory_get_alloc_count();
 
 #define MEMORY_ALLOCATE(type, n, tag) (typeof(type) *) memory_allocate(sizeof(type) * (n), tag);
 #define MEMORY_FREE(block, type, n, tag)                                                           \
