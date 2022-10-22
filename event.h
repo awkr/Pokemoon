@@ -21,7 +21,8 @@ union EventContext { // 128B
   char c[16];
 };
 
-enum class EventCode {
+static constexpr u16 EVENT_CODE_COUNT = 11;
+enum class EventCode : u16 {
   Unknown = 0x00,
   ApplicationQuit,
   // Context usage:
@@ -44,7 +45,7 @@ enum class EventCode {
   // f32 xOffset = .f32[0];
   // f32 yOffset = .f32[1];
   MouseWheeled,
-  Max = 0xFF,
+  // When adding more variables, make sure to update EVENT_CODE_COUNT
 };
 
 // Return true if handled
@@ -53,8 +54,8 @@ typedef bool (*PFN_on_event)(EventCode           code,
                              void               *listener,
                              const EventContext &context);
 
-void event_initialize();
-void event_shutdown();
+void event_system_initialize(u64 *memorySize, void *pState);
+void event_system_shutdown();
 
 bool event_register(EventCode code, void *listener, PFN_on_event onEvent);
 bool event_deregister(EventCode code, void *listener, PFN_on_event onEvent);

@@ -22,11 +22,7 @@ static Context context{};
 u32 cachedFramebufferWidth  = 0;
 u32 cachedFramebufferHeight = 0;
 
-bool initialize(RendererBackend *backend,
-                PlatformState   *platformState,
-                const char      *applicationName,
-                u32              width,
-                u32              height);
+bool initialize(RendererBackend *backend, const char *appName, u32 width, u32 height);
 bool shutdown(RendererBackend *backend);
 bool begin_frame(RendererBackend *backend, f32 deltaTime);
 bool end_frame(RendererBackend *backend, f32 deltaTime);
@@ -58,11 +54,7 @@ void renderer_backend_cleanup(RendererBackend *backend) {
 
 // ------- Vulkan implementations -------
 
-bool initialize(RendererBackend *backend,
-                PlatformState   *platformState,
-                const char      *applicationName,
-                u32              width,
-                u32              height) {
+bool initialize(RendererBackend *backend, const char *appName, u32 width, u32 height) {
   context.query_memory_type_index = query_memory_type_index;
 
   cachedFramebufferWidth    = width;
@@ -74,7 +66,7 @@ bool initialize(RendererBackend *backend,
 
   VkApplicationInfo applicationInfo  = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
   applicationInfo.apiVersion         = VK_API_VERSION_1_3;
-  applicationInfo.pApplicationName   = applicationName;
+  applicationInfo.pApplicationName   = appName;
   applicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
   applicationInfo.pEngineName        = "Pokemoon";
   applicationInfo.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
@@ -134,7 +126,7 @@ bool initialize(RendererBackend *backend,
       context.instance, &debugMessengerCreateInfo, context.allocator, &context.debugMessenger));
 #endif
 
-  platform_create_surface(platformState, &context);
+  platform_create_surface(&context);
 
   device_create(&context);
 

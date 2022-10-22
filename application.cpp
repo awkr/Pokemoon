@@ -8,21 +8,33 @@
 #include "input.h"
 #include "logging.h"
 #include "memory.h"
+#include "memory/LinearAllocator.h"
 #include "platform.h"
 #include "renderer/frontend.h"
 
 struct ApplicationState {
-  bool          isRunning;
-  bool          isSuspended;
-  PlatformState platformState;
-  u16           width;
-  u16           height;
-  Clock         clock;
-  f64           lastTime;
+  bool  isRunning   = false;
+  bool  isSuspended = false;
+  u16   width;
+  u16   height;
+  Clock clock;
+  f64   lastTime;
+
+  LinearAllocator *systemsAllocator;
+
+  u64   loggingSystemMemorySize;
+  void *loggingSystemState;
+  u64   eventSystemMemorySize;
+  void *eventSystemState;
+  u64   inputSystemMemorySize;
+  void *inputSystemState;
+  u64   platformSystemMemorySize;
+  void *platformSystemState;
+  u64   rendererSystemMemorySize;
+  void *rendererSystemState;
 };
 
-static bool             initialized = false;
-static ApplicationState applicationState{};
+static ApplicationState *state = nullptr;
 
 bool initialize();
 bool update(f32 deltaTime);
@@ -37,54 +49,79 @@ bool application_on_key(EventCode code, void *sender, void *listener, const Even
 bool applicationOnResize(EventCode code, void *sender, void *listener, const EventContext &context);
 
 void application_create(const ApplicationConfig &config) {
-  ASSERT(!initialized);
+  ASSERT(!state);
+
+  memory_system_initialize();
+
+  state                   = new ApplicationState();
+  state->systemsAllocator = new LinearAllocator(64 * MiB);
 
   // Initialize subsystems
-  logging_initialize();
-  event_initialize();
+
+  logging_system_initialize(&state->loggingSystemMemorySize, nullptr);
+  state->loggingSystemState = state->systemsAllocator->alloc(state->loggingSystemMemorySize);
+  logging_system_initialize(&state->loggingSystemMemorySize, state->loggingSystemState);
+
+  event_system_initialize(&state->eventSystemMemorySize, nullptr);
+  state->eventSystemState = state->systemsAllocator->alloc(state->eventSystemMemorySize);
+  event_system_initialize(&state->eventSystemMemorySize, state->eventSystemState);
+
   event_register(EventCode::ApplicationQuit, nullptr, application_on_event);
   event_register(EventCode::KeyReleased, nullptr, application_on_key);
   event_register(EventCode::KeyPressed, nullptr, application_on_key);
   event_register(EventCode::WindowResized, nullptr, applicationOnResize);
-  input_initialize();
-  platform_startup(&applicationState.platformState, config.name, config.width, config.height);
 
-  u32 framebufferWidth  = 0;
-  u32 framebufferHeight = 0;
-  platformGetFramebufferSize(&applicationState.platformState, framebufferWidth, framebufferHeight);
-  ASSERT(renderer_initialize(
-      &applicationState.platformState, config.name, framebufferWidth, framebufferHeight));
+  input_system_initialize(&state->inputSystemMemorySize, nullptr);
+  state->inputSystemState = state->systemsAllocator->alloc(state->inputSystemMemorySize);
+  input_system_initialize(&state->inputSystemMemorySize, state->inputSystemState);
+
+  platform_system_startup(
+      &state->platformSystemMemorySize, nullptr, config.name, config.width, config.height);
+  state->platformSystemState = state->systemsAllocator->alloc(state->platformSystemMemorySize);
+  platform_system_startup(&state->platformSystemMemorySize,
+                          state->platformSystemState,
+                          config.name,
+                          config.width,
+                          config.height);
+
+  u32 width = 0, height = 0;
+  platform_get_framebuffer_size(width, height);
+
+  renderer_system_initialize(&state->rendererSystemMemorySize, nullptr, config.name, width, height);
+  state->rendererSystemState = state->systemsAllocator->alloc(state->rendererSystemMemorySize);
+  renderer_system_initialize(
+      &state->rendererSystemMemorySize, state->rendererSystemState, config.name, width, height);
 
   ASSERT(initialize());
 
-  applicationState.isRunning = true;
-
   LOG_DEBUG("Hello, Pokemoon.");
-
-  initialized = true;
 }
 
 void application_run() {
-  applicationState.clock.start();
-  applicationState.clock.tick();
-  applicationState.lastTime    = applicationState.clock.elapsed();
+  ASSERT(state);
+
+  state->isRunning = true;
+
+  state->clock.start();
+  state->clock.tick();
+  state->lastTime              = state->clock.elapsed();
   const f64 targetFrameSeconds = 1.0f / 60;
 
-  while (applicationState.isRunning) {
-    platform_poll_events(&applicationState.platformState);
-    if (!applicationState.isSuspended) {
-      applicationState.clock.tick();
-      f64 currentTime           = applicationState.clock.elapsed();
-      f64 deltaTime             = currentTime - applicationState.lastTime;
-      applicationState.lastTime = currentTime;
-      f64 frameStartTime        = platform_get_absolute_time();
+  while (state->isRunning) {
+    platform_poll_events();
+    if (!state->isSuspended) {
+      state->clock.tick();
+      f64 currentTime    = state->clock.elapsed();
+      f64 deltaTime      = currentTime - state->lastTime;
+      state->lastTime    = currentTime;
+      f64 frameStartTime = platform_get_absolute_time();
 
       if (!update((f32) deltaTime)) {
-        applicationState.isRunning = false;
+        state->isRunning = false;
         break;
       }
       if (!render()) {
-        applicationState.isRunning = false;
+        state->isRunning = false;
         break;
       }
 
@@ -103,17 +140,22 @@ void application_run() {
     }
   }
 
-  applicationState.isRunning = false;
+  state->isRunning = false;
 
-  renderer_shutdown();
-  platform_shutdown(&applicationState.platformState);
-  input_shutdown();
+  renderer_system_shutdown();
+  platform_system_shutdown();
+  input_system_shutdown();
   event_deregister(EventCode::WindowResized, nullptr, applicationOnResize);
   event_deregister(EventCode::KeyPressed, nullptr, application_on_key);
   event_deregister(EventCode::KeyReleased, nullptr, application_on_key);
   event_deregister(EventCode::ApplicationQuit, nullptr, application_on_event);
-  event_shutdown();
-  logging_shutdown();
+  event_system_shutdown();
+  logging_system_shutdown();
+
+  delete state->systemsAllocator;
+  delete state;
+
+  memory_system_shutdown();
 
   LOG_INFO(memory_get_usage());
 }
@@ -132,7 +174,7 @@ bool application_on_event(EventCode           code,
                           const EventContext &context) {
   switch (code) {
   case EventCode::ApplicationQuit:
-    applicationState.isRunning = false;
+    state->isRunning = false;
     return true;
   default:
     break;
@@ -151,6 +193,7 @@ bool application_on_key(EventCode code, void *sender, void *listener, const Even
       return true;
     } else if (key == Key::M) {
       LOG_INFO(memory_get_usage());
+      LOG_INFO("Alloc count: %d", memory_get_alloc_count());
       return true;
     }
     LOG_DEBUG("Key %d released", key);
@@ -165,15 +208,15 @@ bool applicationOnResize(EventCode           code,
   auto width  = context.u32[0];
   auto height = context.u32[1];
 
-  applicationState.width  = width;
-  applicationState.height = height;
+  state->width  = width;
+  state->height = height;
 
   if (width == 0 || height == 0) { // Handle minimization
-    applicationState.isSuspended = true;
+    state->isSuspended = true;
     return true;
   }
 
-  if (applicationState.isSuspended) { applicationState.isSuspended = false; } // Resume
+  if (state->isSuspended) { state->isSuspended = false; } // Resume
 
   // LOG_DEBUG("Window resized: %i, %i", width, height);
 

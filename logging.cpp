@@ -3,20 +3,27 @@
 //
 
 #include "logging.h"
-#include "defines.h"
 #include "platform.h"
 #include <chrono>
 #include <cstdarg>
 #include <cstdio>
+
+struct LoggerSystemState {};
+
+static LoggerSystemState *state = nullptr;
 
 u64 get_current_time_in_ms() {
   auto now = std::chrono::system_clock::now();
   return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 }
 
-void logging_initialize() {}
+void logging_system_initialize(u64 *memorySize, void *pState) {
+  *memorySize = sizeof(LoggerSystemState);
+  if (!pState) { return; }
+  state = (LoggerSystemState *) pState;
+}
 
-void logging_shutdown() {}
+void logging_system_shutdown() { state = nullptr; }
 
 void log_output(LogLevel level, const char *message, ...) {
   const char *prefixes[6] = {"[Trace]", "[Debug]", "[Info]", "[Warn]", "[Error]", "[Fatal]"};

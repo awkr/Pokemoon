@@ -7,24 +7,27 @@
 #include "logging.h"
 #include "memory.h"
 
-static RendererBackend *backend = nullptr;
+struct RenderSystemState {
+  RendererBackend backend{};
+};
+
+static RenderSystemState *state = nullptr;
 
 bool begin_frame(f32 deltaTime);
 bool end_frame(f32 deltaTime);
 
-bool renderer_initialize(struct PlatformState *platformState,
-                         CString               applicationName,
-                         u32                   width,
-                         u32                   height) {
-  backend = (RendererBackend *) memory_allocate(sizeof(RendererBackend), MemoryTag::Renderer);
-  renderer_backend_setup(backend);
-  return backend->initialize(backend, platformState, applicationName, width, height);
+bool renderer_system_initialize(
+    u64 *memorySize, void *pState, CString appName, u32 width, u32 height) {
+  *memorySize = sizeof(RenderSystemState);
+  if (!pState) { return true; }
+  state = (RenderSystemState *) pState;
+  renderer_backend_setup(&state->backend);
+  return state->backend.initialize(&state->backend, appName, width, height);
 }
 
-void renderer_shutdown() {
-  backend->shutdown(backend);
-  renderer_backend_cleanup(backend);
-  memory_free(backend, sizeof(RendererBackend), MemoryTag::Renderer);
+void renderer_system_shutdown() {
+  state->backend.shutdown(&state->backend);
+  renderer_backend_cleanup(&state->backend);
 }
 
 bool renderer_draw_frame(const RenderPacket &packet) {
@@ -35,13 +38,13 @@ bool renderer_draw_frame(const RenderPacket &packet) {
 }
 
 void rendererOnResize(u16 width, u16 height) {
-  if (backend) {
-    backend->resize(backend, width, height);
+  if (state) {
+    state->backend.resize(&state->backend, width, height);
   } else {
     LOG_WARN("Renderer backend does not exist to accept size: %i %i", width, height);
   }
 }
 
-bool begin_frame(f32 deltaTime) { return backend->beginFrame(backend, deltaTime); }
+bool begin_frame(f32 deltaTime) { return state->backend.beginFrame(&state->backend, deltaTime); }
 
-bool end_frame(f32 deltaTime) { return backend->endFrame(backend, deltaTime); }
+bool end_frame(f32 deltaTime) { return state->backend.endFrame(&state->backend, deltaTime); }

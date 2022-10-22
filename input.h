@@ -31,8 +31,8 @@ enum class Key : u16 {
 
 using MouseButton = u16;
 
-void input_initialize();
-void input_shutdown();
+void input_system_initialize(u64 *memorySize, void *pState);
+void input_system_shutdown();
 
 void input_update();
 

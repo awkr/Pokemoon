@@ -18,9 +18,11 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_metal.h>
 
-struct PlatformInternalState {
-  GLFWwindow *window;
+struct PlatformSystemState {
+  GLFWwindow *window = nullptr;
 };
+
+static PlatformSystemState *state = nullptr;
 
 static void glfw_error_callback(int error, const char *description) {
   LOG_ERROR("GLFW error: %s", description);
@@ -57,9 +59,10 @@ static void glfw_scroll_callback(GLFWwindow *window, f64 xOffset, f64 yOffset) {
 
 static void glfw_refresh_callback(GLFWwindow *window) {}
 
-void platform_startup(PlatformState *state, CString name, u32 width, u32 height) {
-  state->internalState = memory_allocate(sizeof(PlatformInternalState), MemoryTag::Platform);
-  auto internalState   = (PlatformInternalState *) state->internalState;
+void platform_system_startup(u64 *memorySize, void *pState, CString name, u32 width, u32 height) {
+  *memorySize = sizeof(PlatformSystemState);
+  if (!pState) { return; }
+  state = (PlatformSystemState *) pState;
 
   glfwSetErrorCallback(glfw_error_callback);
   ASSERT(glfwInit() == GLFW_TRUE);
@@ -74,17 +77,17 @@ void platform_startup(PlatformState *state, CString name, u32 width, u32 height)
   glfwSetScrollCallback(window, glfw_scroll_callback);
   glfwSetWindowRefreshCallback(window, glfw_refresh_callback);
 
-  internalState->window = window;
+  state->window = window;
 }
 
-void platform_shutdown(PlatformState *state) {
-  auto internalState = (PlatformInternalState *) state->internalState;
-  glfwDestroyWindow(internalState->window);
+void platform_system_shutdown() {
+  glfwDestroyWindow(state->window);
   glfwTerminate();
-  memory_free(internalState, sizeof(PlatformInternalState), MemoryTag::Platform);
+  glfwSetErrorCallback(nullptr);
+  state = nullptr;
 }
 
-void platform_poll_events(PlatformState *state) { glfwPollEvents(); }
+void platform_poll_events() { glfwPollEvents(); }
 
 void *platform_allocate(u64 size, bool aligned) { return malloc(size); }
 
@@ -104,18 +107,16 @@ f64 platform_get_absolute_time() { return glfwGetTime(); }
 
 void platform_sleep(u64 ms) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); }
 
-void platformGetFramebufferSize(PlatformState *state, u32 &width, u32 &height) {
-  auto internalState = (PlatformInternalState *) state->internalState;
-  glfwGetFramebufferSize(internalState->window, (int *) (&width), (int *) (&height));
+void platform_get_framebuffer_size(u32 &width, u32 &height) {
+  glfwGetFramebufferSize(state->window, (int *) (&width), (int *) (&height));
 }
 
 void platform_get_required_extension(CString *&extensions) {
   DARRAY_PUSH(extensions, &VK_EXT_METAL_SURFACE_EXTENSION_NAME);
 }
 
-void platform_create_surface(PlatformState *state, Context *context) {
-  auto internalState = (PlatformInternalState *) state->internalState;
-  auto error         = glfwCreateWindowSurface(
-      context->instance, internalState->window, context->allocator, &context->surface);
+void platform_create_surface(Context *context) {
+  auto error = glfwCreateWindowSurface(
+      context->instance, state->window, context->allocator, &context->surface);
   VK_CHECK(error);
 }

@@ -17,24 +17,29 @@ struct EventCodeEntry {
 
 struct EventSystemState {
   // Lookup table for event codes
-  EventCodeEntry registered[(u16) EventCode::Max];
+  EventCodeEntry registered[EVENT_CODE_COUNT];
 };
 
-static EventSystemState eventSystemState{};
+static EventSystemState *state = nullptr;
 
-void event_initialize() {}
+void event_system_initialize(u64 *memorySize, void *pState) {
+  *memorySize = sizeof(EventSystemState);
+  if (!pState) { return; }
+  state = (EventSystemState *) pState;
+}
 
-void event_shutdown() {
-  for (auto &entry : eventSystemState.registered) {
+void event_system_shutdown() {
+  for (auto &entry : state->registered) {
     if (entry.events != nullptr) {
       darray_destroy(entry.events);
       entry.events = nullptr;
     }
   }
+  state = nullptr;
 }
 
 bool event_register(EventCode code, void *listener, PFN_on_event onEvent) {
-  auto &entry = eventSystemState.registered[(u16) code];
+  auto &entry = state->registered[(u16) code];
   if (entry.events == nullptr) {
     entry.events = DARRAY_CREATE_TAG(RegisteredEvent, MemoryTag::Event);
   }
@@ -50,7 +55,7 @@ bool event_register(EventCode code, void *listener, PFN_on_event onEvent) {
 }
 
 bool event_deregister(EventCode code, void *listener, PFN_on_event onEvent) {
-  auto &entry = eventSystemState.registered[(u16) code];
+  auto &entry = state->registered[(u16) code];
   if (entry.events == nullptr) { return false; }
   auto registeredCount = darray_length(entry.events);
   for (u32 i = 0; i < registeredCount; ++i) {
@@ -64,7 +69,7 @@ bool event_deregister(EventCode code, void *listener, PFN_on_event onEvent) {
 }
 
 bool event_fire(EventCode code, void *sender, const EventContext &context) {
-  auto &entry = eventSystemState.registered[(u16) code];
+  auto &entry = state->registered[(u16) code];
   if (entry.events == nullptr) { return false; }
   auto registeredCount = darray_length(entry.events);
   for (u32 i = 0; i < registeredCount; ++i) {

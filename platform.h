@@ -11,11 +11,11 @@ struct PlatformState {
   void *internalState;
 };
 
-void platform_startup(PlatformState *state, CString name, u32 width, u32 height);
+void platform_system_startup(u64 *memorySize, void *pState, CString name, u32 width, u32 height);
 
-void platform_shutdown(PlatformState *state);
+void platform_system_shutdown();
 
-void platform_poll_events(PlatformState *state);
+void platform_poll_events();
 
 void *platform_allocate(u64 size, bool aligned = false);
 
@@ -35,6 +35,6 @@ f64 platform_get_absolute_time();
 
 void platform_sleep(u64 ms);
 
-void platformGetFramebufferSize(PlatformState *state, u32 &width, u32 &height);
+void platform_get_framebuffer_size(u32 &width, u32 &height);
 
 #endif // POKEMOON_PLATFORM_H

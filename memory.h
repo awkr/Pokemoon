@@ -7,6 +7,7 @@
 
 #include "defines.h"
 
+static constexpr u16 MEMORY_TAG_COUNT = 14;
 enum class MemoryTag : u16 {
   Unknown = 0,
   LINEAR_ALLOCATOR,
@@ -22,11 +23,11 @@ enum class MemoryTag : u16 {
   Fence,
   Image,
   ImageView,
-  Max,
+  // When adding more variables, make sure to update MEMORY_TAG_COUNT
 };
 
-void memory_initialize();
-void memory_shutdown();
+void memory_system_initialize();
+void memory_system_shutdown();
 
 void *memory_allocate(u64 size, MemoryTag tag);
 void *memory_allocate(u64 stride, u32 n, MemoryTag tag);
@@ -37,6 +38,7 @@ void *memory_copy(void *dst, const void *src, u64 size);
 void *memory_set(void *dst, i32 value, u64 size);
 
 char *memory_get_usage();
+u64 memory_get_alloc_count();
 
 #define MEMORY_ALLOCATE(type, n, tag) (typeof(type) *) memory_allocate(sizeof(type) * (n), tag);
 #define MEMORY_FREE(block, type, n, tag)                                                           \

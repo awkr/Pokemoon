@@ -5,10 +5,12 @@
 #ifndef POKEMOON_LOGGING_H
 #define POKEMOON_LOGGING_H
 
+#include "defines.h"
+
 enum class LogLevel { Trace = 0, Debug, Info, Warn, Error, Fatal };
 
-void logging_initialize();
-void logging_shutdown();
+void logging_system_initialize(u64 *memorySize, void *pState);
+void logging_system_shutdown();
 
 void log_output(LogLevel level, const char *message, ...);
 

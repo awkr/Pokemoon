@@ -17,37 +17,41 @@ struct MouseState {
   bool buttons[16];
 };
 
-struct InputState {
+struct InputSystemState {
   KeyboardState keyboardCurrent;
   KeyboardState keyboardPrevious;
   MouseState    mouseCurrent;
   MouseState    mousePrevious;
 };
 
-static InputState inputState{};
+static InputSystemState *state = nullptr;
 
-void input_initialize() {}
+void input_system_initialize(u64 *memorySize, void *pState) {
+  *memorySize = sizeof(InputSystemState);
+  if (!pState) { return; }
+  state = (InputSystemState *) pState;
+}
 
-void input_shutdown() {}
+void input_system_shutdown() {}
 
 void input_update() {
   // Copy current states to previous states
-  memory_copy(&inputState.keyboardPrevious, &inputState.keyboardCurrent, sizeof(KeyboardState));
-  memory_copy(&inputState.mousePrevious, &inputState.mouseCurrent, sizeof(MouseState));
+  memory_copy(&state->keyboardPrevious, &state->keyboardCurrent, sizeof(KeyboardState));
+  memory_copy(&state->mousePrevious, &state->mouseCurrent, sizeof(MouseState));
 }
 
-bool input_is_key_down(Key key) { return inputState.keyboardCurrent.keys[(u16) key]; }
+bool input_is_key_down(Key key) { return state->keyboardCurrent.keys[(u16) key]; }
 
-bool input_is_key_up(Key key) { return !inputState.keyboardCurrent.keys[(u16) key]; }
+bool input_is_key_up(Key key) { return !state->keyboardCurrent.keys[(u16) key]; }
 
-bool input_was_key_down(Key key) { return inputState.keyboardPrevious.keys[(u16) key]; }
+bool input_was_key_down(Key key) { return state->keyboardPrevious.keys[(u16) key]; }
 
-bool input_was_key_up(Key key) { return !inputState.keyboardPrevious.keys[(u16) key]; }
+bool input_was_key_up(Key key) { return !state->keyboardPrevious.keys[(u16) key]; }
 
 void input_process_key(Key key, bool pressed) {
   // Only handled if the state actually changed
-  if (inputState.keyboardCurrent.keys[(u16) key] != pressed) {
-    inputState.keyboardCurrent.keys[(u16) key] = pressed; // Update internal state
+  if (state->keyboardCurrent.keys[(u16) key] != pressed) {
+    state->keyboardCurrent.keys[(u16) key] = pressed; // Update internal state
     // Fire off an event for immediate processing
     EventContext context = {};
     context.u16[0]       = (u16) key;
@@ -55,35 +59,29 @@ void input_process_key(Key key, bool pressed) {
   }
 }
 
-bool input_is_mouse_button_down(MouseButton button) {
-  return inputState.mouseCurrent.buttons[button];
-}
+bool input_is_mouse_button_down(MouseButton button) { return state->mouseCurrent.buttons[button]; }
 
-bool input_is_mouse_button_up(MouseButton button) {
-  return !inputState.mouseCurrent.buttons[button];
-}
+bool input_is_mouse_button_up(MouseButton button) { return !state->mouseCurrent.buttons[button]; }
 
 bool input_was_mouse_button_down(MouseButton button) {
-  return inputState.mousePrevious.buttons[button];
+  return state->mousePrevious.buttons[button];
 }
 
-bool input_was_mouse_button_up(MouseButton button) {
-  return !inputState.mousePrevious.buttons[button];
-}
+bool input_was_mouse_button_up(MouseButton button) { return !state->mousePrevious.buttons[button]; }
 
 void input_get_mouse_position(f32 &x, f32 &y) {
-  x = inputState.mouseCurrent.x;
-  y = inputState.mouseCurrent.y;
+  x = state->mouseCurrent.x;
+  y = state->mouseCurrent.y;
 }
 
 void input_get_previous_mouse_position(f32 &x, f32 &y) {
-  x = inputState.mousePrevious.x;
-  y = inputState.mousePrevious.y;
+  x = state->mousePrevious.x;
+  y = state->mousePrevious.y;
 }
 
 void input_process_mouse_button(MouseButton button, bool pressed) {
-  if (inputState.mouseCurrent.buttons[button] != pressed) {
-    inputState.mouseCurrent.buttons[button] = pressed;
+  if (state->mouseCurrent.buttons[button] != pressed) {
+    state->mouseCurrent.buttons[button] = pressed;
 
     EventContext context = {};
     context.u16[0]       = button;
@@ -93,11 +91,11 @@ void input_process_mouse_button(MouseButton button, bool pressed) {
 }
 
 void input_process_mouse_move(f32 x, f32 y) {
-  if (inputState.mouseCurrent.x != x || inputState.mouseCurrent.y != y) {
+  if (state->mouseCurrent.x != x || state->mouseCurrent.y != y) {
     // LOG_TRACE("Mouse position: %f %f", x, y);
 
-    inputState.mouseCurrent.x = x;
-    inputState.mouseCurrent.y = y;
+    state->mouseCurrent.x = x;
+    state->mouseCurrent.y = y;
 
     EventContext context = {};
     context.f32[0]       = x;
