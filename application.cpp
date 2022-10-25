@@ -76,21 +76,22 @@ void application_create(const ApplicationConfig &config) {
   input_system_initialize(&state->inputSystemMemorySize, state->inputSystemState);
 
   platform_system_startup(
-      &state->platformSystemMemorySize, nullptr, config.name, config.width, config.height);
+      &state->platformSystemMemorySize, nullptr, config.appName, config.width, config.height);
   state->platformSystemState = state->systemsAllocator->alloc(state->platformSystemMemorySize);
   platform_system_startup(&state->platformSystemMemorySize,
                           state->platformSystemState,
-                          config.name,
+                          config.appName,
                           config.width,
                           config.height);
 
   u32 width = 0, height = 0;
   platform_get_framebuffer_size(width, height);
 
-  renderer_system_initialize(&state->rendererSystemMemorySize, nullptr, config.name, width, height);
+  renderer_system_initialize(
+      &state->rendererSystemMemorySize, nullptr, config.appName, width, height);
   state->rendererSystemState = state->systemsAllocator->alloc(state->rendererSystemMemorySize);
   renderer_system_initialize(
-      &state->rendererSystemMemorySize, state->rendererSystemState, config.name, width, height);
+      &state->rendererSystemMemorySize, state->rendererSystemState, config.appName, width, height);
 
   ASSERT(initialize());
 

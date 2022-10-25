@@ -3,12 +3,16 @@
 //
 
 #include "logging.h"
+#include "StringUtils.h"
 #include "platform.h"
+#include "platform/filesystem.h"
 #include <chrono>
 #include <cstdarg>
 #include <cstdio>
 
-struct LoggerSystemState {};
+struct LoggerSystemState {
+  FileHandle logFileHandle;
+};
 
 static LoggerSystemState *state = nullptr;
 
@@ -17,10 +21,22 @@ u64 get_current_time_in_ms() {
   return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 }
 
+void append_to_log_file(CString message) {
+  if (state) { // Since the message already contains a '\n', just write the bytes directly
+    u64 length  = utils::string_length(message);
+    u64 written = 0;
+    if (!filesystem_write(&state->logFileHandle, length, message, &written)) {
+      platform_console_write_error("[Logging] Failed to write log to file");
+    }
+  }
+}
+
 void logging_system_initialize(u64 *memorySize, void *pState) {
   *memorySize = sizeof(LoggerSystemState);
   if (!pState) { return; }
   state = (LoggerSystemState *) pState;
+  // Create new/wipe existing log file, then open it
+  ASSERT(filesystem_open("pokemoon.log", FILE_MODE_WRITE, false, &state->logFileHandle));
 }
 
 void logging_system_shutdown() { state = nullptr; }
@@ -41,13 +57,15 @@ void log_output(LogLevel level, const char *message, ...) {
   char out[size];
   platform_zero_memory(out, sizeof(out));
 
-  sprintf(out, "%s %s\n", prefixes[(u8) level], buffer);
+  utils::string_format(out, "%s %s\n", prefixes[(u8) level], buffer);
 
   if (level >= LogLevel::Warn) {
     platform_console_write_error(out);
   } else {
     platform_console_write(out);
   }
+
+  append_to_log_file(out);
 }
 
 void report_assertion_failure(CString expression, CString file, u32 line) {

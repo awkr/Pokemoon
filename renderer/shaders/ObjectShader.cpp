@@ -4,43 +4,99 @@
 
 #include "ObjectShader.h"
 #include "StringUtils.h"
+#include "logging.h"
+#include "math/types.h"
 #include "memory.h"
 #include "platform/filesystem.h"
+#include "renderer/Pipeline.h"
+#include <array>
 
-bool create_shader_module(
-    Context *context, CString name, CString type, VkShaderStageFlagBits stage, ShaderStage *out);
+bool create_shader_module(Context *context, CString name, CString type, ShaderStage *out);
 
 bool object_shader_create(Context *context, ObjectShader *out) {
   // Shader module init per stage
-  const char types[OBJECT_SHADER_STATE_COUNT][5] = {
-      "vert",
-      "frag",
-  };
+  const char types[OBJECT_SHADER_STATE_COUNT][5] = {"vert", "frag"};
+  for (u8 i = 0; i < OBJECT_SHADER_STATE_COUNT; ++i) {
+    if (!create_shader_module(context, "Builtin.ObjectShader", types[i], &out->stages[i])) {
+      return false;
+    }
+  }
+
+  // Todo Descriptors
+
+  // Pipeline creation
+  VkViewport viewport{};
+  viewport.x        = 0;
+  viewport.y        = (f32) context->framebufferHeight;
+  viewport.width    = (f32) context->framebufferWidth;
+  viewport.height   = -(f32) context->framebufferHeight;
+  viewport.minDepth = 0;
+  viewport.maxDepth = 1;
+
+  VkRect2D scissor{};
+  scissor.offset.x = scissor.offset.y = 0;
+  scissor.extent.width                = context->framebufferWidth;
+  scissor.extent.height               = context->framebufferHeight;
+
+  // Attributes
+  const u32                         attributeCount = 1;
+  VkVertexInputAttributeDescription attributeDescriptions[attributeCount];
+
+  // Position
+  VkFormat formats[attributeCount] = {VK_FORMAT_R32G32B32_SFLOAT};
+  u32      offsets[attributeCount] = {offsetof(Vertex3D, position)};
+  for (u32 i = 0; i < attributeCount; ++i) {
+    attributeDescriptions[i].binding  = 0; // Binding index - should match binding desc
+    attributeDescriptions[i].location = i; // Attribute location
+    attributeDescriptions[i].format   = formats[i];
+    attributeDescriptions[i].offset   = offsets[i];
+  }
+
+  // Todo Descriptor set layouts
+
+  // Stages
+  std::array<VkPipelineShaderStageCreateInfo, OBJECT_SHADER_STATE_COUNT> stageCreateInfos{};
   const VkShaderStageFlagBits stages[OBJECT_SHADER_STATE_COUNT] = {
       VK_SHADER_STAGE_VERTEX_BIT,
       VK_SHADER_STAGE_FRAGMENT_BIT,
   };
+  for (u32 i = 0; i < OBJECT_SHADER_STATE_COUNT; ++i) {
+    stageCreateInfos[i].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stageCreateInfos[i].stage  = stages[i];
+    stageCreateInfos[i].module = out->stages[i].module;
+    stageCreateInfos[i].pName  = "main";
+  }
 
-  for (u8 i = 0; i < OBJECT_SHADER_STATE_COUNT; ++i) {
-    if (!create_shader_module(
-            context, "Builtin.ObjectShader", types[i], stages[i], &out->stages[i])) {
-      return false;
-    }
+  if (!graphics_pipeline_create(context,
+                                &context->mainRenderPass,
+                                attributeCount,
+                                attributeDescriptions,
+                                0,
+                                nullptr,
+                                OBJECT_SHADER_STATE_COUNT,
+                                stageCreateInfos.data(),
+                                viewport,
+                                scissor,
+                                false,
+                                &out->pipeline)) {
+    LOG_ERROR("Failed to create graphics pipeline for object shader");
+    return false;
   }
 
   return true;
 }
 
 void object_shader_destroy(Context *context, ObjectShader *shader) {
-  for (u8 i = 0; i < OBJECT_SHADER_STATE_COUNT; ++i) {
-    vkDestroyShaderModule(context->device.handle, shader->stages[i].module, context->allocator);
+  pipeline_destroy(context, &shader->pipeline);
+
+  for (auto &stage : shader->stages) {
+    vkDestroyShaderModule(context->device.handle, stage.module, context->allocator);
   }
 }
 
 void object_shader_use(Context *context, ObjectShader *shader) {}
 
-bool create_shader_module(
-    Context *context, CString name, CString type, VkShaderStageFlagBits stage, ShaderStage *out) {
+bool create_shader_module(Context *context, CString name, CString type, ShaderStage *out) {
   // Build file path
   char filepath[512];
   utils::string_format(filepath, "assets/shaders/%s.%s.spv", name, type);
@@ -63,16 +119,6 @@ bool create_shader_module(
   memory_free(buffer, sizeof(u8) * size, MemoryTag::STRING);
 
   filesystem_close(&handle);
-
-  // Shader stage info
-
-  VkPipelineShaderStageCreateInfo shaderStageCreateInfo = {
-      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO};
-  shaderStageCreateInfo.stage  = stage;
-  shaderStageCreateInfo.module = out->module;
-  shaderStageCreateInfo.pName  = "main";
-
-  out->shaderStageCreateInfo = shaderStageCreateInfo;
 
   return true;
 }

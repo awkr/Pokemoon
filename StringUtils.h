@@ -8,6 +8,8 @@
 
 namespace utils {
 
+u32 string_length(CString s);
+
 u32 string_format(char *dst, const char *format, ...);
 
 } // namespace utils

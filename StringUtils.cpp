@@ -6,8 +6,11 @@
 #include "memory.h"
 #include <cstdarg>
 #include <cstdio>
+#include <cstring>
 
 namespace utils {
+
+u32 string_length(CString s) { return strlen(s); }
 
 u32 string_format(char *dst, const char *format, ...) {
   va_list args;

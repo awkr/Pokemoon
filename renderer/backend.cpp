@@ -30,7 +30,7 @@ void resize(RendererBackend *backend, u16 width, u16 height);
 bool query_memory_type_index(u32 requiredType, VkMemoryPropertyFlags requiredProperty, u32 &index);
 void create_framebuffers(RendererBackend *backend, Swapchain *swapchain, RenderPass *renderPass);
 void create_command_buffers(RendererBackend *backend);
-bool recreateSwapchain(RendererBackend *backend);
+bool recreate_swapchain(RendererBackend *backend);
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
@@ -57,12 +57,10 @@ void renderer_backend_cleanup(RendererBackend *backend) {
 bool initialize(RendererBackend *backend, const char *appName, u32 width, u32 height) {
   context.query_memory_type_index = query_memory_type_index;
 
-  cachedFramebufferWidth    = width;
-  cachedFramebufferHeight   = height;
+  cachedFramebufferWidth = width, cachedFramebufferHeight = height;
   context.framebufferWidth  = cachedFramebufferWidth;
   context.framebufferHeight = cachedFramebufferHeight;
-  cachedFramebufferWidth    = 0;
-  cachedFramebufferHeight   = 0;
+  cachedFramebufferWidth = 0, cachedFramebufferHeight = 0;
 
   VkApplicationInfo applicationInfo  = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
   applicationInfo.apiVersion         = VK_API_VERSION_1_3;
@@ -221,7 +219,7 @@ bool begin_frame(RendererBackend *backend, f32 deltaTime) {
   }
   if (context.framebufferSizeGeneration != context.framebufferSizeLastGeneration) {
     VK_CHECK(vkDeviceWaitIdle(device.handle));
-    if (!recreateSwapchain(backend)) { return false; }
+    if (!recreate_swapchain(backend)) { return false; }
     return false;
   }
 
@@ -262,9 +260,6 @@ bool begin_frame(RendererBackend *backend, f32 deltaTime) {
 
   vkCmdSetViewport(commandBuffer->handle, 0, 1, &viewport);
   vkCmdSetScissor(commandBuffer->handle, 0, 1, &scissor);
-
-  context.mainRenderPass.renderArea = {{0, 0},
-                                       {context.framebufferWidth, context.framebufferHeight}};
 
   render_pass_begin(commandBuffer,
                     &context.mainRenderPass,
@@ -376,7 +371,7 @@ void create_command_buffers(RendererBackend *backend) {
   }
 }
 
-bool recreateSwapchain(RendererBackend *backend) {
+bool recreate_swapchain(RendererBackend *backend) {
   if (context.recreatingSwapchain) { return false; }
   if (cachedFramebufferWidth == 0 || cachedFramebufferHeight == 0) { return false; }
   vkDeviceWaitIdle(context.device.handle);

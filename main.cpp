@@ -2,9 +2,9 @@
 
 int main() {
   ApplicationConfig config = {
-      .name   = "Pokemoon",
-      .width  = 240,
-      .height = 240,
+      .appName = "Pokemoon",
+      .width   = 240,
+      .height  = 240,
   };
   application_create(config);
   application_run();

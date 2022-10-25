@@ -8,7 +8,7 @@
 #include "defines.h"
 
 struct ApplicationConfig {
-  CString name;
+  CString appName;
   u16     width;
   u16     height;
 };

@@ -30,6 +30,7 @@ set(SOURCES
     renderer/framebuffer.cpp
     renderer/fence.cpp
     renderer/shaders/ObjectShader.cpp
+    renderer/Pipeline.cpp
     memory/LinearAllocator.cpp
     platform/filesystem.cpp)
 

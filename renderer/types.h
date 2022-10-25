@@ -107,8 +107,7 @@ struct Fence {
 };
 
 struct ShaderStage {
-  VkShaderModule                  module;
-  VkPipelineShaderStageCreateInfo shaderStageCreateInfo;
+  VkShaderModule module;
 };
 
 struct Pipeline {
