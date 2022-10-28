@@ -5,7 +5,9 @@
 #include "renderer/backend.h"
 #include "container/darray.h"
 #include "logging.h"
+#include "math/types.h"
 #include "memory.h"
+#include "renderer/buffer.h"
 #include "renderer/command_buffer.h"
 #include "renderer/device.h"
 #include "renderer/fence.h"
@@ -28,9 +30,18 @@ bool begin_frame(RendererBackend *backend, f32 deltaTime);
 bool end_frame(RendererBackend *backend, f32 deltaTime);
 void resize(RendererBackend *backend, u16 width, u16 height);
 bool query_memory_type_index(u32 requiredType, VkMemoryPropertyFlags requiredProperty, u32 &index);
+bool create_buffers(Context *context);
 void create_framebuffers(RendererBackend *backend, Swapchain *swapchain, RenderPass *renderPass);
 void create_command_buffers(RendererBackend *backend);
 bool recreate_swapchain(RendererBackend *backend);
+void upload_data(Context      *context,
+                 VkCommandPool commandPool,
+                 VkFence       fence,
+                 VkQueue       queue,
+                 Buffer       *buffer,
+                 u64           offset,
+                 u64           size,
+                 const void   *src);
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
@@ -168,11 +179,47 @@ bool initialize(RendererBackend *backend, const char *appName, u32 width, u32 he
   // Create builtin shaders
   ASSERT(object_shader_create(&context, &context.objectShader));
 
+  create_buffers(&context);
+
+  // Todo Begin temp code
+  const u32 vertexCount = 4;
+  Vertex3D  vertices[vertexCount];
+  vertices[0].position = {0.0, 0.0, 0};
+  vertices[1].position = {1.0, 1.0, 0};
+  vertices[2].position = {0.0, 1.0, 0};
+  vertices[3].position = {1.0, 0.0, 0};
+
+  const u32 indexCount          = 6;
+  u32       indices[indexCount] = {0, 1, 2, 0, 3, 1};
+
+  upload_data(&context,
+              context.device.graphicsCommandPool,
+              nullptr,
+              context.device.graphicsQueue,
+              &context.objectVertexBuffer,
+              0,
+              sizeof(Vertex3D) * vertexCount,
+              vertices);
+
+  upload_data(&context,
+              context.device.graphicsCommandPool,
+              nullptr,
+              context.device.graphicsQueue,
+              &context.objectIndexBuffer,
+              0,
+              sizeof(u32) * indexCount,
+              indices);
+
+  // Todo End temp code
+
   return true;
 }
 
 bool shutdown(RendererBackend *backend) {
   vkDeviceWaitIdle(context.device.handle);
+
+  buffer_destroy(&context, &context.objectIndexBuffer);
+  buffer_destroy(&context, &context.objectVertexBuffer);
 
   object_shader_destroy(&context, &context.objectShader);
 
@@ -265,6 +312,20 @@ bool begin_frame(RendererBackend *backend, f32 deltaTime) {
                     &context.mainRenderPass,
                     context.swapchain.framebuffers[context.imageIndex].handle);
 
+  // Todo Begin temp code
+  object_shader_use(&context, &context.objectShader);
+
+  // Bind vertex buffer at offset
+  VkDeviceSize offsets[1] = {0};
+  vkCmdBindVertexBuffers(
+      commandBuffer->handle, 0, 1, &context.objectVertexBuffer.handle, (VkDeviceSize *) offsets);
+  // Bind index buffer at offset
+  vkCmdBindIndexBuffer(
+      commandBuffer->handle, context.objectIndexBuffer.handle, 0, VK_INDEX_TYPE_UINT32);
+  // Issue the draw
+  vkCmdDrawIndexed(commandBuffer->handle, 6, 1, 0, 0, 0);
+  // Todo End temp code
+
   return true;
 }
 
@@ -343,6 +404,33 @@ bool query_memory_type_index(u32 requiredType, VkMemoryPropertyFlags requiredPro
   return false;
 }
 
+bool create_buffers(Context *context) {
+  const u64 vertexBufferSize = sizeof(Vertex3D) * 1024 * 1024;
+  if (!buffer_create(context,
+                     vertexBufferSize,
+                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
+                         VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                     true,
+                     &context->objectVertexBuffer)) {
+    return false;
+  }
+  context->geometryVertexOffset = 0;
+
+  const u64 indexBufferSize = sizeof(u32) * 1024 * 1024;
+  if (!buffer_create(context,
+                     indexBufferSize,
+                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
+                         VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                     true,
+                     &context->objectIndexBuffer)) {
+    return false;
+  }
+  context->geometryIndexOffset = 0;
+  return true;
+}
+
 void create_framebuffers(RendererBackend *backend, Swapchain *swapchain, RenderPass *renderPass) {
   for (u32 i = 0; i < context.swapchain.imageCount; ++i) {
     u32         attachmentCount = 2;
@@ -397,6 +485,33 @@ bool recreate_swapchain(RendererBackend *backend) {
   create_command_buffers(backend);
   context.recreatingSwapchain = false; // Clear flag
   return true;
+}
+
+void upload_data(Context      *context,
+                 VkCommandPool commandPool,
+                 VkFence       fence,
+                 VkQueue       queue,
+                 Buffer       *buffer,
+                 u64           offset,
+                 u64           size,
+                 const void   *src) {
+  // Create a host-visible staging buffer to upload to. Mark it as the source of the transfer.
+  Buffer staging{};
+  buffer_create(context,
+                size,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                true,
+                &staging);
+
+  // Load the data into the staging buffer
+  buffer_load(context, &staging, 0, size, 0, src);
+
+  // Perform the copy from staging to the device local buffer
+  buffer_copy_to(
+      context, commandPool, fence, queue, staging.handle, 0, buffer->handle, offset, size);
+
+  buffer_destroy(context, &staging); // Clean up the staging buffer
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL

@@ -94,7 +94,11 @@ void object_shader_destroy(Context *context, ObjectShader *shader) {
   }
 }
 
-void object_shader_use(Context *context, ObjectShader *shader) {}
+void object_shader_use(Context *context, ObjectShader *shader) {
+  pipeline_bind(&context->graphicsCommandBuffers[context->imageIndex],
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                &shader->pipeline);
+}
 
 bool create_shader_module(Context *context, CString name, CString type, ShaderStage *out) {
   // Build file path

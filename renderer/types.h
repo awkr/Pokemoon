@@ -13,6 +13,16 @@
 
 using Vec4 = glm::vec4;
 
+struct Buffer {
+  u64                   size;
+  VkBuffer              handle;
+  VkBufferUsageFlags    usage;
+  bool                  isLocked;
+  VkDeviceMemory        memory;
+  u32                   memoryTypeIndex;
+  VkMemoryPropertyFlags memoryPropertyBits;
+};
+
 struct SwapchainSupport {
   VkSurfaceCapabilitiesKHR capabilities;
   u32                      formatCount;
@@ -146,6 +156,10 @@ struct Context {
   bool      recreatingSwapchain;
 
   ObjectShader objectShader;
+  Buffer       objectVertexBuffer;
+  Buffer       objectIndexBuffer;
+  u64          geometryVertexOffset;
+  u64          geometryIndexOffset;
 
   RenderPass mainRenderPass;
 
