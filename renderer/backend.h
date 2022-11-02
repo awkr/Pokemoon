@@ -6,8 +6,8 @@
 #define POKEMOON_BACKEND_H
 
 #include "defines.h"
+#include "glm/glm.hpp"
 
-struct PlatformState;
 struct Context;
 
 struct RendererBackend {
@@ -15,10 +15,15 @@ struct RendererBackend {
   bool (*shutdown)(RendererBackend *backend);
   void (*resize)(RendererBackend *backend, u16 width, u16 height);
   bool (*beginFrame)(RendererBackend *backend, f32 deltaTime);
+  void (*updateGlobalState)(const glm::mat4 &proj,
+                            const glm::mat4 &view,
+                            const glm::vec3 &eye,
+                            const glm::vec4 &ambient,
+                            u32              mode);
   bool (*endFrame)(RendererBackend *backend, f32 deltaTime);
 };
 
-void renderer_backend_setup(RendererBackend *outBackend);
+void renderer_backend_setup(RendererBackend *backend);
 void renderer_backend_cleanup(RendererBackend *backend);
 
 void platform_get_required_extension(CString *&extensions);

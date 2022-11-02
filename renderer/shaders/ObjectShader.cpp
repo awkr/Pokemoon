@@ -9,6 +9,7 @@
 #include "memory.h"
 #include "platform/filesystem.h"
 #include "renderer/Pipeline.h"
+#include "renderer/buffer.h"
 #include <array>
 
 bool create_shader_module(Context *context, CString name, CString type, ShaderStage *out);
@@ -22,7 +23,32 @@ bool object_shader_create(Context *context, ObjectShader *out) {
     }
   }
 
-  // Todo Descriptors
+  // Descriptors
+
+  { // Global descriptors
+    VkDescriptorSetLayoutBinding binding{};
+    binding.binding         = 0;
+    binding.descriptorCount = 1;
+    binding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    binding.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT;
+
+    VkDescriptorSetLayoutCreateInfo layout = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+    layout.bindingCount                    = 1;
+    layout.pBindings                       = &binding;
+    VK_CHECK(vkCreateDescriptorSetLayout(
+        context->device.handle, &layout, context->allocator, &out->globalDescriptorSetLayout));
+
+    VkDescriptorPoolSize poolSize{};
+    poolSize.type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSize.descriptorCount = context->swapchain.imageCount;
+
+    VkDescriptorPoolCreateInfo pool = {VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+    pool.poolSizeCount              = 1;
+    pool.pPoolSizes                 = &poolSize;
+    pool.maxSets                    = context->swapchain.imageCount;
+    VK_CHECK(vkCreateDescriptorPool(
+        context->device.handle, &pool, context->allocator, &out->globalDescriptorPool));
+  }
 
   // Pipeline creation
   VkViewport viewport{};
@@ -39,12 +65,12 @@ bool object_shader_create(Context *context, ObjectShader *out) {
   scissor.extent.height               = context->framebufferHeight;
 
   // Attributes
-  const u32                         attributeCount = 1;
+  const u32                         attributeCount = 2;
   VkVertexInputAttributeDescription attributeDescriptions[attributeCount];
 
-  // Position
-  VkFormat formats[attributeCount] = {VK_FORMAT_R32G32B32_SFLOAT};
-  u32      offsets[attributeCount] = {offsetof(Vertex3D, position)};
+  // Position and color
+  VkFormat formats[attributeCount] = {VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT};
+  u32      offsets[attributeCount] = {offsetof(Vertex3D, position), offsetof(Vertex3D, color)};
   for (u32 i = 0; i < attributeCount; ++i) {
     attributeDescriptions[i].binding  = 0; // Binding index - should match binding desc
     attributeDescriptions[i].location = i; // Attribute location
@@ -52,7 +78,11 @@ bool object_shader_create(Context *context, ObjectShader *out) {
     attributeDescriptions[i].offset   = offsets[i];
   }
 
-  // Todo Descriptor set layouts
+  // Descriptor set layouts
+  const u32             descriptorSetLayoutCount          = 1;
+  VkDescriptorSetLayout layouts[descriptorSetLayoutCount] = {
+      out->globalDescriptorSetLayout,
+  };
 
   // Stages
   std::array<VkPipelineShaderStageCreateInfo, OBJECT_SHADER_STATE_COUNT> stageCreateInfos{};
@@ -71,8 +101,8 @@ bool object_shader_create(Context *context, ObjectShader *out) {
                                 &context->mainRenderPass,
                                 attributeCount,
                                 attributeDescriptions,
-                                0,
-                                nullptr,
+                                descriptorSetLayoutCount,
+                                layouts,
                                 OBJECT_SHADER_STATE_COUNT,
                                 stageCreateInfos.data(),
                                 viewport,
@@ -83,14 +113,47 @@ bool object_shader_create(Context *context, ObjectShader *out) {
     return false;
   }
 
+  // Create uniform buffer
+  if (!buffer_create(context,
+                     sizeof(GlobalUniformObject),
+                     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                     true,
+                     &out->globalUniformBuffer)) {
+    return false;
+  }
+
+  // Allocate global descriptor sets
+
+  VkDescriptorSetLayout globalLayouts[3 /* Todo */] = {
+      out->globalDescriptorSetLayout,
+      out->globalDescriptorSetLayout,
+      out->globalDescriptorSetLayout,
+  };
+
+  VkDescriptorSetAllocateInfo allocateInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+  allocateInfo.descriptorPool              = out->globalDescriptorPool;
+  allocateInfo.descriptorSetCount          = 3; /* Todo */
+  allocateInfo.pSetLayouts                 = globalLayouts;
+  VK_CHECK(
+      vkAllocateDescriptorSets(context->device.handle, &allocateInfo, out->globalDescriptorSets));
+
   return true;
 }
 
 void object_shader_destroy(Context *context, ObjectShader *shader) {
+  auto device = context->device.handle;
+
+  buffer_destroy(context, &shader->globalUniformBuffer);
+
   pipeline_destroy(context, &shader->pipeline);
 
+  vkDestroyDescriptorPool(device, shader->globalDescriptorPool, context->allocator);
+  vkDestroyDescriptorSetLayout(device, shader->globalDescriptorSetLayout, context->allocator);
+
   for (auto &stage : shader->stages) {
-    vkDestroyShaderModule(context->device.handle, stage.module, context->allocator);
+    vkDestroyShaderModule(device, stage.module, context->allocator);
   }
 }
 
@@ -98,6 +161,45 @@ void object_shader_use(Context *context, ObjectShader *shader) {
   pipeline_bind(&context->graphicsCommandBuffers[context->imageIndex],
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                 &shader->pipeline);
+}
+
+void object_shader_update_global_state(Context *context, ObjectShader *shader) {
+  auto imageIndex    = context->imageIndex;
+  auto commandBuffer = context->graphicsCommandBuffers[imageIndex].handle;
+  auto descriptorSet = shader->globalDescriptorSets[imageIndex];
+
+  // Bind the descriptor set to be updated
+  vkCmdBindDescriptorSets(commandBuffer,
+                          VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          shader->pipeline.layout,
+                          0,
+                          1,
+                          &descriptorSet,
+                          0,
+                          nullptr);
+
+  // Configure the descriptors for the given index
+  u64 offset = 0;
+  u32 range  = sizeof(GlobalUniformObject);
+
+  // Copy data to buffer
+  buffer_load(context, &shader->globalUniformBuffer, offset, range, 0, &shader->globalUBO);
+
+  VkDescriptorBufferInfo bufferInfo{};
+  bufferInfo.buffer = shader->globalUniformBuffer.handle;
+  bufferInfo.offset = offset;
+  bufferInfo.range  = range;
+
+  // Update descriptor sets
+  VkWriteDescriptorSet descriptorWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+  descriptorWrite.dstSet               = shader->globalDescriptorSets[imageIndex];
+  descriptorWrite.dstBinding           = 0;
+  descriptorWrite.dstArrayElement      = 0;
+  descriptorWrite.descriptorType       = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  descriptorWrite.descriptorCount      = 1;
+  descriptorWrite.pBufferInfo          = &bufferInfo;
+
+  vkUpdateDescriptorSets(context->device.handle, 1, &descriptorWrite, 0, nullptr);
 }
 
 bool create_shader_module(Context *context, CString name, CString type, ShaderStage *out) {

@@ -27,6 +27,11 @@ u32 cachedFramebufferHeight = 0;
 bool initialize(RendererBackend *backend, const char *appName, u32 width, u32 height);
 bool shutdown(RendererBackend *backend);
 bool begin_frame(RendererBackend *backend, f32 deltaTime);
+void update_global_state(const glm::mat4 &proj,
+                         const glm::mat4 &view,
+                         const glm::vec3 &eye,
+                         const glm::vec4 &ambient,
+                         u32              mode);
 bool end_frame(RendererBackend *backend, f32 deltaTime);
 void resize(RendererBackend *backend, u16 width, u16 height);
 bool query_memory_type_index(u32 requiredType, VkMemoryPropertyFlags requiredProperty, u32 &index);
@@ -51,12 +56,13 @@ debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
 
 // ------- Public APIs -------
 
-void renderer_backend_setup(RendererBackend *outBackend) {
-  outBackend->initialize = initialize;
-  outBackend->shutdown   = shutdown;
-  outBackend->beginFrame = begin_frame;
-  outBackend->endFrame   = end_frame;
-  outBackend->resize     = resize;
+void renderer_backend_setup(RendererBackend *backend) {
+  backend->initialize        = initialize;
+  backend->shutdown          = shutdown;
+  backend->beginFrame        = begin_frame;
+  backend->updateGlobalState = update_global_state;
+  backend->endFrame          = end_frame;
+  backend->resize            = resize;
 }
 
 void renderer_backend_cleanup(RendererBackend *backend) {
@@ -184,10 +190,19 @@ bool initialize(RendererBackend *backend, const char *appName, u32 width, u32 he
   // Todo Begin temp code
   const u32 vertexCount = 4;
   Vertex3D  vertices[vertexCount];
-  vertices[0].position = {0.0, 0.0, 0};
-  vertices[1].position = {1.0, 1.0, 0};
-  vertices[2].position = {0.0, 1.0, 0};
-  vertices[3].position = {1.0, 0.0, 0};
+
+  const f32 f          = 1.5f;
+  vertices[0].position = {-0.5 * f, -0.5 * f, 0};
+  vertices[0].color    = {1.0, 0.0, 0};
+
+  vertices[1].position = {0.5 * f, 0.5 * f, 0.0};
+  vertices[1].color    = {1.0, 0.0, 0.0};
+
+  vertices[2].position = {-0.5 * f, 0.5 * f, 0.0};
+  vertices[2].color    = {1.0, 1.0, 0.0};
+
+  vertices[3].position = {0.5 * f, -0.5 * f, 0.0};
+  vertices[3].color    = {1.0, 0.0, 0.0};
 
   const u32 indexCount          = 6;
   u32       indices[indexCount] = {0, 1, 2, 0, 3, 1};
@@ -312,21 +327,35 @@ bool begin_frame(RendererBackend *backend, f32 deltaTime) {
                     &context.mainRenderPass,
                     context.swapchain.framebuffers[context.imageIndex].handle);
 
+  return true;
+}
+
+void update_global_state(const glm::mat4 &proj,
+                         const glm::mat4 &view,
+                         const glm::vec3 &eye,
+                         const glm::vec4 &ambient,
+                         u32              mode) {
+  auto commandBuffer = context.graphicsCommandBuffers[context.imageIndex].handle;
+
+  object_shader_use(&context, &context.objectShader);
+
+  context.objectShader.globalUBO.proj = proj;
+  context.objectShader.globalUBO.view = view;
+
+  object_shader_update_global_state(&context, &context.objectShader);
+
   // Todo Begin temp code
   object_shader_use(&context, &context.objectShader);
 
   // Bind vertex buffer at offset
   VkDeviceSize offsets[1] = {0};
   vkCmdBindVertexBuffers(
-      commandBuffer->handle, 0, 1, &context.objectVertexBuffer.handle, (VkDeviceSize *) offsets);
+      commandBuffer, 0, 1, &context.objectVertexBuffer.handle, (VkDeviceSize *) offsets);
   // Bind index buffer at offset
-  vkCmdBindIndexBuffer(
-      commandBuffer->handle, context.objectIndexBuffer.handle, 0, VK_INDEX_TYPE_UINT32);
+  vkCmdBindIndexBuffer(commandBuffer, context.objectIndexBuffer.handle, 0, VK_INDEX_TYPE_UINT32);
   // Issue the draw
-  vkCmdDrawIndexed(commandBuffer->handle, 6, 1, 0, 0, 0);
+  vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
   // Todo End temp code
-
-  return true;
 }
 
 bool end_frame(RendererBackend *backend, f32 deltaTime) {
@@ -364,8 +393,8 @@ bool end_frame(RendererBackend *backend, f32 deltaTime) {
   // Each semaphore waits on a corresponding pipeline stage to complete.
   // VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT prevents subsequent color attachment writes from
   // executing until the semaphore signals (i.e. one frame is presented at a time)
-  VkPipelineStageFlags flags[1] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-  submitInfo.pWaitDstStageMask  = flags;
+  VkPipelineStageFlags waitDstStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+  submitInfo.pWaitDstStageMask         = waitDstStages;
 
   VK_CHECK(vkQueueSubmit(context.device.graphicsQueue,
                          1,

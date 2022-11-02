@@ -13,6 +13,11 @@
 
 using Vec4 = glm::vec4;
 
+struct GlobalUniformObject {
+  glm::mat4 view;
+  glm::mat4 proj;
+};
+
 struct Buffer {
   u64                   size;
   VkBuffer              handle;
@@ -130,6 +135,13 @@ struct Pipeline {
 struct ObjectShader {
   ShaderStage stages[OBJECT_SHADER_STATE_COUNT];
   Pipeline    pipeline;
+
+  VkDescriptorPool globalDescriptorPool; // Used for global items such as view / projection matrix
+  VkDescriptorSetLayout globalDescriptorSetLayout;
+  VkDescriptorSet       globalDescriptorSets[3]; // One per frame, max 3 for triple-buffering
+
+  GlobalUniformObject globalUBO;
+  Buffer              globalUniformBuffer;
 };
 
 struct Context {

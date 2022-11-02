@@ -11,3 +11,5 @@ bool object_shader_create(Context *context, ObjectShader *out);
 void object_shader_destroy(Context *context, ObjectShader *shader);
 
 void object_shader_use(Context *context, ObjectShader *shader);
+
+void object_shader_update_global_state(Context *context, ObjectShader *shader);

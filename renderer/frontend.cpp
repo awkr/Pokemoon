@@ -5,7 +5,9 @@
 #include "frontend.h"
 #include "backend.h"
 #include "logging.h"
+#include "math/types.h"
 #include "memory.h"
+#include <glm/gtc/matrix_transform.hpp>
 
 struct RenderSystemState {
   RendererBackend backend{};
@@ -32,9 +34,19 @@ void renderer_system_shutdown() {
 
 bool renderer_draw_frame(const RenderPacket &packet) {
   if (begin_frame(packet.deltaTime)) {
+    const auto proj = glm::perspective(glm::radians(45.0f), 480.0f / 480.0f, 0.1f, 100.0f);
+
+    static f32 z = -1.0f;
+    z -= 0.005f;
+    const auto view = glm::translate(glm::mat4(1.0f), {0, 0, z});
+
+    state->backend.updateGlobalState(proj, view, VEC3_ZERO, VEC4_ONE, 0);
+
     if (!end_frame(packet.deltaTime)) { return false; }
+
+    return true;
   }
-  return true;
+  return false;
 }
 
 void rendererOnResize(u16 width, u16 height) {
