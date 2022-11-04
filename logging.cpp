@@ -8,7 +8,6 @@
 #include "platform/filesystem.h"
 #include <chrono>
 #include <cstdarg>
-#include <cstdio>
 
 struct LoggerSystemState {
   FileHandle logFileHandle;
@@ -51,7 +50,7 @@ void log_output(LogLevel level, const char *message, ...) {
 
   va_list args;
   va_start(args, message);
-  vsnprintf(buffer, size, message, args);
+  utils::string_format_v(buffer, message, args);
   va_end(args);
 
   char out[size];
