@@ -13,3 +13,5 @@ void object_shader_destroy(Context *context, ObjectShader *shader);
 void object_shader_use(Context *context, ObjectShader *shader);
 
 void object_shader_update_global_state(Context *context, ObjectShader *shader);
+
+void object_shader_update_object(Context *context, ObjectShader *shader, const glm::mat4 &model);

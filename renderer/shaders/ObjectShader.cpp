@@ -202,6 +202,16 @@ void object_shader_update_global_state(Context *context, ObjectShader *shader) {
   vkUpdateDescriptorSets(context->device.handle, 1, &descriptorWrite, 0, nullptr);
 }
 
+void object_shader_update_object(Context *context, ObjectShader *shader, const glm::mat4 &model) {
+  auto commandBuffer = context->graphicsCommandBuffers[context->imageIndex].handle;
+  vkCmdPushConstants(commandBuffer,
+                     shader->pipeline.layout,
+                     VK_SHADER_STAGE_VERTEX_BIT,
+                     0,
+                     sizeof(glm::mat4),
+                     &model);
+}
+
 bool create_shader_module(Context *context, CString name, CString type, ShaderStage *out) {
   // Build file path
   char filepath[512];

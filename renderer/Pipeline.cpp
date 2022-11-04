@@ -109,6 +109,14 @@ bool graphics_pipeline_create(Context                           *context,
   VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
       VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
 
+  // Push constant
+  VkPushConstantRange pushConstantRange{};
+  pushConstantRange.stageFlags                    = VK_SHADER_STAGE_VERTEX_BIT;
+  pushConstantRange.offset                        = 0;
+  pushConstantRange.size                          = sizeof(glm::mat4);
+  pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+  pipelineLayoutCreateInfo.pPushConstantRanges    = &pushConstantRange;
+
   // Descriptor set layouts
   pipelineLayoutCreateInfo.setLayoutCount = descriptorSetLayoutCount;
   pipelineLayoutCreateInfo.pSetLayouts    = descriptorSetLayouts;

@@ -47,6 +47,7 @@ void upload_data(Context      *context,
                  u64           offset,
                  u64           size,
                  const void   *src);
+void update_object(const glm::mat4 &model);
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL
 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
@@ -63,6 +64,7 @@ void renderer_backend_setup(RendererBackend *backend) {
   backend->updateGlobalState = update_global_state;
   backend->endFrame          = end_frame;
   backend->resize            = resize;
+  backend->updateObject      = update_object;
 }
 
 void renderer_backend_cleanup(RendererBackend *backend) {
@@ -343,19 +345,6 @@ void update_global_state(const glm::mat4 &proj,
   context.objectShader.globalUBO.view = view;
 
   object_shader_update_global_state(&context, &context.objectShader);
-
-  // Todo Begin temp code
-  object_shader_use(&context, &context.objectShader);
-
-  // Bind vertex buffer at offset
-  VkDeviceSize offsets[1] = {0};
-  vkCmdBindVertexBuffers(
-      commandBuffer, 0, 1, &context.objectVertexBuffer.handle, (VkDeviceSize *) offsets);
-  // Bind index buffer at offset
-  vkCmdBindIndexBuffer(commandBuffer, context.objectIndexBuffer.handle, 0, VK_INDEX_TYPE_UINT32);
-  // Issue the draw
-  vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
-  // Todo End temp code
 }
 
 bool end_frame(RendererBackend *backend, f32 deltaTime) {
@@ -541,6 +530,25 @@ void upload_data(Context      *context,
       context, commandPool, fence, queue, staging.handle, 0, buffer->handle, offset, size);
 
   buffer_destroy(context, &staging); // Clean up the staging buffer
+}
+
+void update_object(const glm::mat4 &model) {
+  auto commandBuffer = context.graphicsCommandBuffers[context.imageIndex].handle;
+
+  object_shader_update_object(&context, &context.objectShader, model);
+
+  // Todo Begin temp code
+  object_shader_use(&context, &context.objectShader);
+
+  // Bind vertex buffer at offset
+  VkDeviceSize offsets[1] = {0};
+  vkCmdBindVertexBuffers(
+      commandBuffer, 0, 1, &context.objectVertexBuffer.handle, (VkDeviceSize *) offsets);
+  // Bind index buffer at offset
+  vkCmdBindIndexBuffer(commandBuffer, context.objectIndexBuffer.handle, 0, VK_INDEX_TYPE_UINT32);
+  // Issue the draw
+  vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
+  // Todo End temp code
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL

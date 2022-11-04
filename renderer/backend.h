@@ -21,6 +21,7 @@ struct RendererBackend {
                             const glm::vec4 &ambient,
                             u32              mode);
   bool (*endFrame)(RendererBackend *backend, f32 deltaTime);
+  void (*updateObject)(const glm::mat4 &model);
 };
 
 void renderer_backend_setup(RendererBackend *backend);

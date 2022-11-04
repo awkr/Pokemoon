@@ -8,6 +8,7 @@
 #include "math/types.h"
 #include "memory.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 struct RenderSystemState {
   RendererBackend backend{};
@@ -41,6 +42,12 @@ bool renderer_draw_frame(const RenderPacket &packet) {
     const auto view = glm::translate(glm::mat4(1.0f), {0, 0, z});
 
     state->backend.updateGlobalState(proj, view, VEC3_ZERO, VEC4_ONE, 0);
+
+    static float angle = 0.0f;
+    angle += 0.01f;
+    auto quat  = glm::angleAxis(angle, glm::vec3(0, 0, 1));
+    auto model = glm::mat4_cast(quat);
+    state->backend.updateObject(model);
 
     if (!end_frame(packet.deltaTime)) { return false; }
 
